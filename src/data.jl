@@ -23,32 +23,50 @@ julia> for (data, model_features) in sdl
        end
 ```
 """
-struct SegmentedTimeSeries{D, T, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
-    data::D # Original data, should be an array
-    tsteps::T # tsteps associated with the data
+struct SegmentedTimeSeries{D, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
+    data::D
     segmentsize::Int
     shift::Int
     batchsize::Int
     nsegments::Int
     shuffle::Bool
-    partial::Bool
+    partial_segment::Bool
+    partial_batch::Bool
     indices::Vector{UnitRange{Int}} # indices of the segments
     imax::Int
     rng::R
 end
 
-function SegmentedTimeSeries(data, tsteps; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial=true, rng=GLOBAL_RNG)
+function SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
     @assert segmentsize > 1
     @assert batchsize > 0
-    @assert _nobs(data) == length(tsteps)
+
     isnothing(shift) && (shift = segmentsize)
     datasize = _nobs(data)
-    # Compute number of segments (M = floor((K - S) / R) + 1)
-    nsegments = max(0, fld(datasize - segmentsize, shift) + 1)
-    # Indices for each segment: {ymR : mR+S−1} for m in 0:M-1
-    indices = [((m * shift + 1):(min(datasize, m * shift + segmentsize))) for m in 0:(nsegments-1)]
-    imax = partial ? nsegments : nsegments - batchsize + 1
-    return SegmentedTimeSeries(data, tsteps, segmentsize, shift, batchsize, nsegments, shuffle, partial, indices, imax, rng)
+
+    # Compute indices for each segment
+    indices = UnitRange{Int}[]
+    m = 0
+    while true
+        start_idx = m * shift + 1
+        end_idx = start_idx + segmentsize - 1
+        if end_idx > datasize
+            if partial_segment && start_idx <= datasize
+                push!(indices, start_idx:datasize)
+            end
+            break
+        else
+            push!(indices, start_idx:end_idx)
+        end
+        m += 1
+    end
+    nsegments = length(indices)
+
+    # Compute imax for batching
+    imax = partial_batch ? nsegments : nsegments - batchsize + 1
+    imax = max(imax, 0)
+
+    return SegmentedTimeSeries(data, segmentsize, shift, batchsize, nsegments, shuffle, partial_segment, partial_batch, indices, imax, rng)
 end
 
 Base.@propagate_inbounds function Base.iterate(sdl::SegmentedTimeSeries, i=0)
@@ -59,13 +77,12 @@ Base.@propagate_inbounds function Base.iterate(sdl::SegmentedTimeSeries, i=0)
     nexti = min(i + sdl.batchsize, sdl.nsegments)
     segments = sdl.indices[i+1:nexti]
     batch_data = _get_ts_obs(sdl.data, segments)
-    batch_tsteps = _get_ts_obs(sdl.tsteps, segments)
-    return ((batch_data, batch_tsteps), nexti)
+    return (batch_data, nexti)
 end
 
 function Base.length(d::SegmentedTimeSeries)
     n = d.nsegments / d.batchsize
-    d.partial ? ceil(Int, n) : floor(Int, n)
+    d.partial_batch ? ceil(Int, n) : floor(Int, n)
 end
 
 _nobs(data::AbstractArray) = size(data)[end]
@@ -84,4 +101,4 @@ end
 _get_ts_obs(data::AbstractArray, segments) = [data[ntuple(i -> Colon(), Val(ndims(data) - 1))..., seg] for seg in segments]
 _get_ts_obs(data::Union{Tuple, NamedTuple}, i) = map(Base.Fix2(_get_ts_obs, i), data)
 
-Base.eltype(::SegmentedTimeSeries{D, T}) where {D, T} = Tuple{Vector{D}, Vector{T}}
+Base.eltype(::SegmentedTimeSeries{D}) where D = Vector{D}
