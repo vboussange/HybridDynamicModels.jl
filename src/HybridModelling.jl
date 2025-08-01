@@ -5,8 +5,11 @@ using Random
 using ConcreteStructs: @concrete
 
 export SegmentedTimeSeries, ModelFeatures, LearnableICs, initialparameters
-export BoxConstraint
+export Constraint, NoConstraint
+export LearnableICs
+
 include("data.jl")
 include("constraints.jl")
+include("models.jl")
 
 end
