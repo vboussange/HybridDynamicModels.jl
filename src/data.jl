@@ -1,25 +1,65 @@
 # Adapted from Flux.jl `DataLoader` and MLUtils.jl `DataLoader`
 using Random: AbstractRNG, shuffle!, GLOBAL_RNG
 """
-    SegmentedTimeSeries(data, tsteps; segmentsize=2, batchsize=1, shuffle=false, partial=true, rng=GLOBAL_RNG)
-An object that iterates over mini-batches of segments of `data`, 
-each segment containing `segmentsize` data points, each mini-batch containing `batchsize` segments
-(except possibly the last one).
+    SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
 
-The last dimension in each tensor is the observation dimension, i.e. the one
+An object that iterates over mini-batches of segments of `data`,
+each segment containing `segmentsize` data points, each mini-batch containing `batchsize` segments
+(except possibly the last one). The last dimension in each tensor is the time dimension, i.e. the one segmented.
+
+# Arguments
+- `segmentsize`: Number of time points in each segment.
+- `shift`: Step size between the start of consecutive segments. If `shift < segmentsize`, segments will overlap; if `shift > segmentsize`, there will be gaps. By default, `shift = segmentsize` (no overlap).
+- `batchsize`: Number of segments per batch.
+- `shuffle`: Shuffle the order of segments before batching.
+- `partial_segment`: Allow the last segment to be shorter than `segmentsize` if not enough data remains.
+- `partial_batch`: Allow the last batch to contain fewer than `batchsize` segments if not enough segments remain.
+- `rng`: Random number generator for shuffling.
 
 # Examples
 
+## Basic usage with array
 ```jldoctest
-julia> Xtrain = rand(10, 100);
+julia> Xtrain = rand(10, 100)
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=2, batchsize=1)
+julia> for batch in sdl
+           println("Batch: ", summary(batch))
+       end
+```
 
-julia> tsteps = 1:100;
-
-julia> sdl = SegmentedTimeSeries(Xtrain, tsteps; segmentsize=2, batchsize=1);
-
-julia> for (data, model_features) in sdl
+## With time steps and tuple input
+```jldoctest
+julia> tsteps = 1:100
+julia> sdl = SegmentedTimeSeries((Xtrain, tsteps); segmentsize=2, batchsize=1)
+julia> for (data, tseg) in sdl
            println("Data: ", summary(data))
-           println("Features: ", summary(model_features))
+           println("Time segment: ", tseg)
+       end
+```
+
+## Custom shift and batch size
+```jldoctest
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=3, shift=1, batchsize=2)
+julia> for batch in sdl
+           println("Batch: ", batch)
+       end
+```
+
+## Partial segments and batches
+```jldoctest
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=3, batchsize=2, partial_segment=true, partial_batch=true)
+julia> for batch in sdl
+           println("Batch: ", batch)
+       end
+```
+
+## Shuffle segments
+```jldoctest
+julia> using Random
+julia> rng = Random.MersenneTwister(42)
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=2, batchsize=1, shuffle=true, rng=rng)
+julia> for batch in sdl
+           println("Shuffled batch: ", batch)
        end
 ```
 """
