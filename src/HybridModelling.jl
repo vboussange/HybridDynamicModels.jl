@@ -1,12 +1,15 @@
 module HybridModelling
 
 using Lux
+import Lux: IntegerType
 using Random
 using ConcreteStructs: @concrete
+using OrdinaryDiffEq
+using Random
 
-export SegmentedTimeSeries, ModelFeatures, LearnableICs, initialparameters
+export SegmentedTimeSeries
 export Constraint, NoConstraint
-export LearnableICs
+export Parameter, InitialConditions, ODEModel
 
 include("data.jl")
 include("constraints.jl")
