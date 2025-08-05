@@ -1,21 +1,43 @@
 Lux.apply(layer::AbstractLuxLayer, ps, st) = layer(ps, st) # This defines the behavior of Lux.Chain
 
+"""
+    AbstractParamLayer <: AbstractLuxLayer
+
+Abstract type for layers representing parameters without feature computation.
+"""
 abstract type AbstractParamLayer <: AbstractLuxLayer end # Defines abstract feature computation free layers
 
 """
-    TODO: Place signatures here
+    Parameter(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple)
+    Parameter(init_value::NamedTuple)
+    Parameter(constraint::AbstractConstraint, init_value::NamedTuple)
 
-# Example
+A layer representing model parameters, optionally with constraints and initial states.
+
+## Arguments
+
+  - `constraint`: An `AbstractConstraint` (e.g., from Bijectors) to transform parameters.
+  - `init_value`: NamedTuple of initial parameter values.
+  - `init_state`: NamedTuple of initial states (optional).
+
+## Inputs
+
+  - `ps`: Parameters of the layer.
+  - `st`: States of the layer.
+
+## Behavior
+
+Transforms parameters according to the constraint when used in a model. States are not transformed.
+
+## Example
+
 ```jldoctest
-julia> using Bijectors
-initial_ics = [(a = rand(3), b = randn(3)) for _ in 1:5] # a should be in [0, 1], b has no constraints
-transform = NamedTransform((
-    a = bijector(Uniform(0., 1.0)),
-    b = identity)
-)
-constraint = Constraint(transform)
-
-julia> InitialConditions(initial_ics, constraint)
+julia> param = Parameter(NoConstraint(), (;u0 = ones(10)), (;tspan = (0.0, 1.0)))
+Parameter(...)
+julia> ps, st = Lux.setup(Random.default_rng(), param)
+julia> kwargs, _ = Lux.apply(param, ps, st)
+julia> kwargs.u0 ≈ ones(10)
+true
 ```
 """
 @concrete struct Parameter <: AbstractParamLayer 
@@ -24,7 +46,6 @@ julia> InitialConditions(initial_ics, constraint)
     init_state
 end
 
-# TODO: define default behavior for init_value = AbstractArray or Tuple
 function Parameter(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple) 
     init_values_transformed = _to_optim_space(constraint, init_value)
     return Parameter(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state))
@@ -52,11 +73,26 @@ end
 LuxCore.initialstates(::AbstractRNG, layer::Parameter) = layer.init_state()
 LuxCore.initialparameters(::AbstractRNG, layer::Parameter) = layer.init_value()
 
+"""
+    InitialConditions(ics::AbstractLuxLayer)
+    InitialConditions(ics::<:AbstractParamLayer)
+    InitialConditions(ics::Vector{<:AbstractParamLayer})
+
+Wraps initial condition layers for ODE or other models.
+
+## Arguments
+  - `ics`: A Lux layer, an `AbstractParamLayer` or a vector of
+    `AbstractParamLayer`. `AbstractParamLayer`s have field `u0`.
+
+## Inputs
+    - (`x`, `ps`, `st`) when `ics` is a single layer or a vector of parameter layers.
+    - (`ps`, `st`) when `ics` is a single parameter layer.
+"""
 @concrete struct InitialConditions <: LuxCore.AbstractLuxWrapperLayer{:ics}
     ics
 end
 
-function (lics::InitialConditions{<:AbstractLuxLayer})(ps, st)
+function (lics::InitialConditions{<:AbstractParamLayer})(ps, st)
     x_u0, new_st_u0 = lics.ics(ps, st)
     new_st = merge(st, new_st_u0)
     return merge((;u0 = x_u0), new_st), new_st
@@ -68,28 +104,54 @@ function (lics::InitialConditions{<:AbstractLuxLayer})(x, ps, st) # handling e.g
     return merge((;u0 = x_u0), new_st), new_st
 end
 
-function LuxCore.initialstates(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:AbstractLuxLayer}})
+function LuxCore.initialstates(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:AbstractParamLayer}})
     n_ics = length(ics.ics)
     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([LuxCore.initialstates(rng, _u0) for _u0 in ics.ics])
 end
 
-function LuxCore.initialparameters(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:AbstractLuxLayer}})
+function LuxCore.initialparameters(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:AbstractParamLayer}})
     n_ics = length(ics.ics)
     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([LuxCore.initialparameters(rng, _u0) for _u0 in ics.ics])
 end
 
-function (lics::InitialConditions{<:AbstractVector{<:AbstractLuxLayer}})(x, ps, st)
+function (lics::InitialConditions{<:AbstractVector{<:AbstractParamLayer}})(x, ps, st)
     k = keys(ps)[x]
     u0, new_st_u0 = lics.ics[x](ps[k], st[k])
     new_st = merge(st, (;k = new_st_u0))
     return u0, new_st
 end
 
+"""
+    ODEModel(components::NamedTuple, dudt::Function; kwargs...)
+
+Wraps an ODE model for simulation using Lux layers.
+
+## Arguments
+  - `components`: NamedTuple of Lux layers representing the components of the model.
+  - `dudt`: Function that computes the derivative of the state, with signature `dudt(components, ps, st, u, t)`.
+  - `kwargs`: Additional keyword arguments passed to the solver (e.g., `tspan`, `saveat`, `alg`).
+
+## Inputs
+  - `x`: NamedTuple containing initial conditions and parameters.
+  - `ps`: Parameters of the model.
+  - `st`: States of the model.
+
+## Example
+
+```jldoctest
+julia> components = (; layer1 = Lux.Dense(10, 10, relu))
+julia> dudt(components, ps, st, u, t) = components.layer1(u, ps.layer1, st.layer1)[1]
+julia> ode_model = ODEModel(components, dudt, tspan = (0f0, 1f0), saveat = range(0f0, stop=1f0, length=100), alg = Tsit5())
+julia> ps, st = Lux.setup(Random.default_rng(), ode_model)
+julia> ode_model((; u0 = ones(Float32, 10)), ps, st)
+```
+"""
 @concrete struct ODEModel <: LuxCore.AbstractLuxWrapperLayer{:components}
     components<:NamedTuple # we should enforce to be a namedtuple of Lux layers
     dudt<:Function # function that computes the derivative
     kwargs
 end
+
 
 ODEModel(components, dudt; kwargs...) = ODEModel(components, dudt, kwargs)
 

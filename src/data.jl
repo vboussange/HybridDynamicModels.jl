@@ -63,7 +63,7 @@ julia> for batch in sdl
        end
 ```
 """
-struct SegmentedTimeSeries{D, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
+struct SegmentedTimeSeries{D, I, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
     data::D
     segmentsize::Int
     shift::Int
@@ -72,7 +72,7 @@ struct SegmentedTimeSeries{D, R<:AbstractRNG} # When iterated, returns (data, mo
     shuffle::Bool
     partial_segment::Bool
     partial_batch::Bool
-    indices::Vector{UnitRange{Int}} # indices of the segments
+    indices::I # indices of the segments 
     imax::Int
     rng::R
 end

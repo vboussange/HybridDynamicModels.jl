@@ -6,6 +6,7 @@ using Random
 using ConcreteStructs: @concrete
 using OrdinaryDiffEq
 using Random
+import Optimisers
 
 export SegmentedTimeSeries
 export Constraint, NoConstraint

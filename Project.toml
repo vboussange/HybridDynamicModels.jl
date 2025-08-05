@@ -12,8 +12,10 @@ Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SciMLSensitivity = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
 
 [compat]
 julia = "1.6.7"
