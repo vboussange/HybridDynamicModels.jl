@@ -181,7 +181,7 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
         m.dudt(components, u, t)
     end
 
-    prob = ODEProblem{false}(__dudt, u0, tspan)
+    prob = ODEProblem{false}(ODEFunction{false}(__dudt), u0, tspan)
     alg = m.kwargs[:alg]
 
     kwargs = merge((;m.kwargs...), x) # overwriting kwargs with x
