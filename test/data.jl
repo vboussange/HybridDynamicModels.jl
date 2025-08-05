@@ -56,4 +56,10 @@ using Random
     sts = SegmentedTimeSeries(tsteps; segmentsize=2, batchsize=1, shuffle=true, rng=rng);
     tsteps_batch = first(sts)
     @assert tsteps_batch[1] != tsteps[1:2]
+
+    # tokenization
+    sts = SegmentedTimeSeries(tsteps; segmentsize=2, batchsize=2);
+    tokenized_sts = tokenize(sts)
+    (token, tsteps_batch) = first(tokenized_sts)
+    @test token == [1, 2]
 end

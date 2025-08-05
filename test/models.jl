@@ -4,11 +4,11 @@ using Lux
 using Random
 using Test
 
-######## Parameter tests ########
-@testset "Parameter Layer Tests" begin
+######## ParameterLayer tests ########
+@testset "ParameterLayer Layer Tests" begin
         
     # first test, no constraint
-    param = Parameter(NoConstraint(), 
+    param = ParameterLayer(NoConstraint(), 
                         (;u0 = ones(10)),
                         (;tspan = (0.0, 1.0), saveat = range(0.0, stop=1.0, length=100)))
 
@@ -22,7 +22,7 @@ using Test
         b = identity)
     )
     constraint = Constraint(transform)
-    param = Parameter(constraint, (;a = ones(3), b = randn(3)))
+    param = ParameterLayer(constraint, (;a = ones(3), b = randn(3)))
 
     ps, st = Lux.setup(Random.default_rng(), param)
     @test !any(ps.a .≈ ones(3)) # should be transformed
@@ -38,12 +38,12 @@ end
 
 ######## Initial Conditions tests ########
 @testset "Initial Conditions Layer Tests" begin
-    lics = InitialConditions(Parameter((a = rand(3), b = randn(3)))) # initial conditions with no constraints
+    lics = InitialConditions(ParameterLayer((a = rand(3), b = randn(3)))) # initial conditions with no constraints
     ps, st = Lux.setup(Random.default_rng(), lics)
     u0, _, = Lux.apply(lics, ps, st) # expected to work, returns all initial conditions
     @test haskey(u0, :u0)
 
-    initial_ics = [Parameter((u0 = rand(10),)) for _ in 1:5] # a should be in [0, 1], b has no constraints
+    initial_ics = [ParameterLayer((u0 = rand(10),)) for _ in 1:5] # a should be in [0, 1], b has no constraints
     lics = InitialConditions(initial_ics)
     ps, st = Lux.setup(Random.default_rng(), lics)
     @test haskey(ps, :u0_1)
@@ -67,7 +67,7 @@ end
 ######### ODEModel tests ########
 using OrdinaryDiffEq
 components = (; layer1 = Lux.Dense(10, 10, relu))
-dudt(components, ps, st, u, t) = components.layer1(u, ps.layer1, st.layer1)[1]
+dudt(components, u, t) = components.layer1(u)
 ode_model = ODEModel(components, dudt, tspan = (0.0, 1.0), saveat = range(0.0, stop=1.0, length=100), alg = Tsit5())
 
 
@@ -83,9 +83,19 @@ model_with_ics([1.], ps, st)
 
 
 # multiple initial conditions
-initial_ics = [Parameter(NoConstraint(), (;u0 = rand(10)), (;saveat= range(0.0, stop=1.0, length=i+1))) for i in 1:5]
+initial_ics = [ParameterLayer(NoConstraint(), (;u0 = rand(10)), (;saveat= range(0.0, stop=1.0, length=i+1))) for i in 1:5]
 lics = InitialConditions(initial_ics)
 model_with_ics = Chain(lics, ode_model)
 ps, st = Lux.setup(rng, model_with_ics)
 x, _ = model_with_ics(3, ps, st)
-length(x.u) == 4
+@test size(x, 2) == 4
+
+# batch mode
+@test_throws Exception model_with_ics([3, 4], ps, st)
+
+initial_ics = [ParameterLayer(NoConstraint(), (;u0 = rand(10)), (;saveat= range(0.0, stop=1.0, length=4))) for i in 1:5]
+lics = InitialConditions(initial_ics)
+model_with_ics = Chain(lics, ode_model)
+ps, st = Lux.setup(rng, model_with_ics)
+x, _ = model_with_ics([3, 4], ps, st)
+@test size(x, 3) == 2

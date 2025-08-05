@@ -109,7 +109,8 @@ function SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, sh
     return SegmentedTimeSeries(data, segmentsize, shift, batchsize, nsegments, shuffle, partial_segment, partial_batch, indices, imax, rng)
 end
 
-Base.@propagate_inbounds function Base.iterate(sdl::SegmentedTimeSeries, i=0)
+# Standard iteration over SegmentedTimeSeries
+Base.@propagate_inbounds function Base.iterate(sdl::SegmentedTimeSeries{D, I, R}, i=0) where {D, I <: AbstractVector{<:UnitRange}, R}
     i >= sdl.imax && return nothing
     if sdl.shuffle && i == 0
         shuffle!(sdl.rng, sdl.indices)
@@ -118,6 +119,20 @@ Base.@propagate_inbounds function Base.iterate(sdl::SegmentedTimeSeries, i=0)
     segments = sdl.indices[i+1:nexti]
     batch_data = _get_ts_obs(sdl.data, segments)
     return (batch_data, nexti)
+end
+
+# Iteration over SegmentedTimeSeries with tokenized input
+Base.@propagate_inbounds function Base.iterate(sdl::SegmentedTimeSeries{D, I, R}, i=0) where {D, I<:AbstractVector{<:Pair}, R}
+    i >= sdl.imax && return nothing
+    if sdl.shuffle && i == 0
+        shuffle!(sdl.rng, sdl.indices)
+    end
+    nexti = min(i + sdl.batchsize, sdl.nsegments)
+    segments = sdl.indices[i+1:nexti]
+    batch_tokens = [s[1] for s in segments]
+    indices = [s[2] for s in segments]
+    batch_data = _get_ts_obs(sdl.data, indices)
+    return ((batch_tokens, batch_data), nexti)
 end
 
 function Base.length(d::SegmentedTimeSeries)
@@ -142,3 +157,29 @@ _get_ts_obs(data::AbstractArray, segments) = [data[ntuple(i -> Colon(), Val(ndim
 _get_ts_obs(data::Union{Tuple, NamedTuple}, i) = map(Base.Fix2(_get_ts_obs, i), data)
 
 Base.eltype(::SegmentedTimeSeries{D}) where D = Vector{D}
+
+function tokenize(sdl::SegmentedTimeSeries)
+    return SegmentedTimeSeries(sdl.data, 
+                            sdl.segmentsize, 
+                            sdl.shift, 
+                            sdl.batchsize, 
+                            sdl.nsegments, 
+                            sdl.shuffle, 
+                            sdl.partial_segment, 
+                            sdl.partial_batch, 
+                            [i => sdl.indices[i] for i in 1:sdl.nsegments], 
+                            sdl.imax, 
+                            sdl.rng)
+end
+
+tokens(sdl::SegmentedTimeSeries{D, I, R}) where {D, I <: AbstractVector{<:Pair}, R} = 1:sdl.nsegments
+
+function Base.getindex(sdl::SegmentedTimeSeries, token)
+    # Find the index of the token in the indices list
+    idx = findfirst(x -> (x isa Pair ? x[1] == token : false), sdl.indices)
+    idx === nothing && throw(KeyError("Token $token not found in SegmentedTimeSeries."))
+    seg = sdl.indices[idx]
+    # seg[2] is the segment indices
+    segment_data = _get_ts_obs(sdl.data, [seg[2]])
+    return Tuple(x[1] for x in segment_data)
+end

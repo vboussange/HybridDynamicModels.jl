@@ -1,16 +1,7 @@
-Lux.apply(layer::AbstractLuxLayer, ps, st) = layer(ps, st) # This defines the behavior of Lux.Chain
-
 """
-    AbstractParamLayer <: AbstractLuxLayer
-
-Abstract type for layers representing parameters without feature computation.
-"""
-abstract type AbstractParamLayer <: AbstractLuxLayer end # Defines abstract feature computation free layers
-
-"""
-    Parameter(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple)
-    Parameter(init_value::NamedTuple)
-    Parameter(constraint::AbstractConstraint, init_value::NamedTuple)
+    ParameterLayer(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple)
+    ParameterLayer(init_value::NamedTuple)
+    ParameterLayer(constraint::AbstractConstraint, init_value::NamedTuple)
 
 A layer representing model parameters, optionally with constraints and initial states.
 
@@ -32,93 +23,115 @@ Transforms parameters according to the constraint when used in a model. States a
 ## Example
 
 ```jldoctest
-julia> param = Parameter(NoConstraint(), (;u0 = ones(10)), (;tspan = (0.0, 1.0)))
-Parameter(...)
+julia> param = ParameterLayer(NoConstraint(), (;u0 = ones(10)), (;tspan = (0.0, 1.0)))
+ParameterLayer(...)
 julia> ps, st = Lux.setup(Random.default_rng(), param)
 julia> kwargs, _ = Lux.apply(param, ps, st)
 julia> kwargs.u0 ≈ ones(10)
 true
 ```
 """
-@concrete struct Parameter <: AbstractParamLayer 
+@concrete struct ParameterLayer <: AbstractLuxLayer 
     constraint <: AbstractConstraint
     init_value
     init_state
 end
+isfeatureless(::Type{<:ParameterLayer}) = Val(true)
+isfeatureless(::Type{<:StatefulLuxLayer{ST, M, psType, stType}}) where {ST, M <: ParameterLayer, psType, stType} = Val(true)
 
-function Parameter(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple) 
+
+function ParameterLayer(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple) 
     init_values_transformed = _to_optim_space(constraint, init_value)
-    return Parameter(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state))
+    return ParameterLayer(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state))
 end
 
-function Parameter(init_value::NamedTuple)
-    return Parameter(NoConstraint(), init_value, (;))
+function ParameterLayer(init_value::NamedTuple)
+    return ParameterLayer(NoConstraint(), init_value, (;))
 end
 
-function Parameter(constraint::AbstractConstraint, init_value::NamedTuple)
-    return Parameter(constraint, init_value, (;))
+function ParameterLayer(constraint::AbstractConstraint, init_value::NamedTuple)
+    return ParameterLayer(constraint, init_value, (;))
 end
 
-function (dl::Parameter)(ps, st)
+function (dl::ParameterLayer)(ps, st)
     ps_tr = dl.constraint(ps)
     return (merge(ps_tr, st), st)
 end
 
+# https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
+function (s::StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)
+    y, st = Lux.apply(s.model, ps, get_state(s))
+    set_state!(s, st)
+    return y
+end
+
 # NOTE: not sure if this behavior is desired. 
-# function (dl::Parameter)(x, ps, st) # access only a subset of the parameters
+# function (dl::ParameterLayer)(x, ps, st) # access only a subset of the parameters
 #     ps_tr = dl.constraint.transform.bs[x](ps[x])
 #     return (merge(ps_tr, st), st)
 # end
 
-LuxCore.initialstates(::AbstractRNG, layer::Parameter) = layer.init_state()
-LuxCore.initialparameters(::AbstractRNG, layer::Parameter) = layer.init_value()
+Lux.initialstates(::AbstractRNG, layer::ParameterLayer) = layer.init_state()
+Lux.initialparameters(::AbstractRNG, layer::ParameterLayer) = layer.init_value()
 
 """
     InitialConditions(ics::AbstractLuxLayer)
-    InitialConditions(ics::<:AbstractParamLayer)
-    InitialConditions(ics::Vector{<:AbstractParamLayer})
+    InitialConditions(ics::<:ParameterLayer)
+    InitialConditions(ics::Vector{<:ParameterLayer})
 
 Wraps initial condition layers for ODE or other models.
 
 ## Arguments
-  - `ics`: A Lux layer, an `AbstractParamLayer` or a vector of
-    `AbstractParamLayer`. `AbstractParamLayer`s have field `u0`.
+  - `ics`: A Lux layer, a `ParameterLayer` or a vector of
+    `ParameterLayer`. `ParameterLayer`s must have field `u0` in their parameters.
 
 ## Inputs
     - (`x`, `ps`, `st`) when `ics` is a single layer or a vector of parameter layers.
     - (`ps`, `st`) when `ics` is a single parameter layer.
 """
-@concrete struct InitialConditions <: LuxCore.AbstractLuxWrapperLayer{:ics}
+@concrete struct InitialConditions <: Lux.AbstractLuxWrapperLayer{:ics}
     ics
 end
+isfeatureless(::Type{<:InitialConditions{<:AbstractLuxLayer}}) = Val(false)
+isfeatureless(::Type{<:InitialConditions{<:AbstractVector{<:ParameterLayer}}}) = Val(false)
+isfeatureless(::Type{<:InitialConditions{<:ParameterLayer}}) = Val(true)
 
-function (lics::InitialConditions{<:AbstractParamLayer})(ps, st)
+function (lics::InitialConditions{<:ParameterLayer})(ps, st)
     x_u0, new_st_u0 = lics.ics(ps, st)
     new_st = merge(st, new_st_u0)
     return merge((;u0 = x_u0), new_st), new_st
 end
 
+
+# TODO: better handle batch dimension
 function (lics::InitialConditions{<:AbstractLuxLayer})(x, ps, st) # handling e.g. a neural net
     x_u0, new_st_u0 = lics.ics(x, ps, st)
     new_st = merge(st, new_st_u0)
     return merge((;u0 = x_u0), new_st), new_st
 end
 
-function LuxCore.initialstates(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:AbstractParamLayer}})
+function Lux.initialstates(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:ParameterLayer}})
     n_ics = length(ics.ics)
-    NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([LuxCore.initialstates(rng, _u0) for _u0 in ics.ics])
+    NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([Lux.initialstates(rng, _u0) for _u0 in ics.ics])
 end
 
-function LuxCore.initialparameters(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:AbstractParamLayer}})
+function Lux.initialparameters(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:ParameterLayer}})
     n_ics = length(ics.ics)
-    NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([LuxCore.initialparameters(rng, _u0) for _u0 in ics.ics])
+    NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([Lux.initialparameters(rng, _u0) for _u0 in ics.ics])
 end
 
-function (lics::InitialConditions{<:AbstractVector{<:AbstractParamLayer}})(x, ps, st)
+function (lics::InitialConditions{<:AbstractVector{<:ParameterLayer}})(x::Int, ps, st)
     k = keys(ps)[x]
     u0, new_st_u0 = lics.ics[x](ps[k], st[k])
     new_st = merge(st, (;k = new_st_u0))
     return u0, new_st
+end
+
+# handling batches
+function (lics::InitialConditions{<:AbstractVector{<:ParameterLayer}})(x::AbstractVector{<:Int}, ps, st)
+    sols = map(xi -> lics(xi, ps, st)[1], x)
+    # Concatenate solutions along a new axis (e.g., batch dimension)
+    return sols, st
 end
 
 """
@@ -146,30 +159,47 @@ julia> ps, st = Lux.setup(Random.default_rng(), ode_model)
 julia> ode_model((; u0 = ones(Float32, 10)), ps, st)
 ```
 """
-@concrete struct ODEModel <: LuxCore.AbstractLuxWrapperLayer{:components}
-    components<:NamedTuple # we should enforce to be a namedtuple of Lux layers
+@concrete struct ODEModel <: Lux.AbstractLuxWrapperLayer{:components}
+    components<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
     dudt<:Function # function that computes the derivative
     kwargs
 end
 
+# function ODEModel(components::NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}, dudt, kwargs)
+#     # Ensure components are StatefulLuxLayers
+#     return ODEModel(components, dudt, kwargs)
+# end
 
 ODEModel(components, dudt; kwargs...) = ODEModel(components, dudt, kwargs)
 
 function (m::ODEModel)(x::NamedTuple, ps, st)
     u0 = hasproperty(x, :u0) ? getfield(x, :u0) : m.kwargs[:u0]
     tspan = hasproperty(x, :tspan) ? getfield(x, :tspan) : m.kwargs[:tspan]
+    components = NamedTuple(k => StatefulLuxLayer{true}(v, getfield(ps, k), get_state(getfield(st, k))) for (k, v) in pairs(m.components))
 
     function __dudt(u, _, t)
-        m.dudt(m.components, ps, st, u, t)
+        m.dudt(components, u, t)
     end
 
-    prob = ODEProblem(__dudt, u0, tspan)
+    prob = ODEProblem{false}(__dudt, u0, tspan)
     alg = m.kwargs[:alg]
 
     kwargs = merge((;m.kwargs...), x) # overwriting kwargs with x
 
-    sol = solve(prob, alg; kwargs...)
-    return (sol, st)
+    sol = solve(prob, alg; kwargs...) |> Array
+    return sol, st
+end
+
+# Handling batches
+function (m::ODEModel)(x::AbstractVector{<:NamedTuple}, ps, st)
+    sols = map(xi -> m(xi, ps, st)[1], x)
+    # Check that all solutions have the same size
+    first_shape = size(sols[1])
+    if any(size(sol) != first_shape for sol in sols)
+        throw(DimensionMismatch("All solutions in batch must have the same dimensions. Got: $(map(size, sols))"))
+    end
+    # Concatenate solutions along a new axis (e.g., batch dimension)
+    return cat(sols...; dims=ndims(sols[1])+1), st
 end
 
 # # Testing
@@ -183,7 +213,7 @@ end
 
 # ode_model((; u0 = ones(10)), ps, st)
 
-# ics = Parameter(NoConstraint(), () -> (;u0 = ones(10)), () -> (;tspan = (0.0, 1.0), saveat = range(0.0, stop=1.0, length=100)))
+# ics = ParameterLayer(NoConstraint(), () -> (;u0 = ones(10)), () -> (;tspan = (0.0, 1.0), saveat = range(0.0, stop=1.0, length=100)))
 # ps, st = Lux.setup(rng, ics)
 
 # Lux.apply(ics, ps, st)

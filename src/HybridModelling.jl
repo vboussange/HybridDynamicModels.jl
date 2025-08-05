@@ -1,19 +1,21 @@
 module HybridModelling
 
-using Lux
-import Lux: IntegerType
+import Lux
+import Lux: IntegerType, AbstractLuxLayer, StatefulLuxLayer, get_state, set_state!
 using Random
 using ConcreteStructs: @concrete
 using OrdinaryDiffEq
 using Random
 import Optimisers
+using DispatchDoctor: @stable
 
-export SegmentedTimeSeries
+export SegmentedTimeSeries, tokenize, tokens
 export Constraint, NoConstraint
-export Parameter, InitialConditions, ODEModel
+export ParameterLayer, InitialConditions, ODEModel
 
 include("data.jl")
 include("constraints.jl")
 include("models.jl")
+include("generics.jl")
 
 end
