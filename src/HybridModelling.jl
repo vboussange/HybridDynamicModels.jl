@@ -15,7 +15,8 @@ export ParameterLayer, InitialConditions, ODEModel
 
 include("data.jl")
 include("constraints.jl")
-include("models.jl")
 include("generics.jl")
+include("layers/parameter.jl")
+include("layers/odemodel.jl")
 
 end

@@ -4,13 +4,22 @@ using Bijectors
 """
     Constraint(transform)
 
-`transform(ps)` should project a named tuple of parameters `ps` defined over a
-certain parameter space into the Euclidean space (optimization space).
-`inverse(transform)(ys)` should map the optimization space back to the parameter
-space.
+Defines a constraint for projected gradient descent.
+
+## Arguments
+
+  - `transform`: A function that maps parameters in the optimization space to the parameter space.
+    It should be invertible, i.e., `inverse(transform)(ps)` should map the
+    parameter space to the optimization space.
+
+## Inputs
+  - `x`: Parameters in the optimization space.
+
+## Outputs
+  - `y`: Parameters in the parameter space.
 """
-struct Constraint{T} <: AbstractConstraint
-    transform::T
+@concrete struct Constraint <: AbstractConstraint
+    transform
 end
 
 (constraint::Constraint)(x) = inverse(constraint.transform)(x)
