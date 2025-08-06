@@ -33,24 +33,16 @@ true
 """
 @concrete struct ParameterLayer <: AbstractLuxLayer 
     constraint <: AbstractConstraint
-    init_value
-    init_state
+    init_value <: Function
+    init_state <: Function
 end
 isfeatureless(::Type{<:ParameterLayer}) = Val(true)
 isfeatureless(::Type{<:StatefulLuxLayer{ST, M, psType, stType}}) where {ST, M <: ParameterLayer, psType, stType} = Val(true)
 
 
-function ParameterLayer(constraint::AbstractConstraint, init_value::NamedTuple, init_state::NamedTuple) 
+function ParameterLayer(constraint::AbstractConstraint = NoConstraint(), init_value = (;), init_state = (;))
     init_values_transformed = _to_optim_space(constraint, init_value)
     return ParameterLayer(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state))
-end
-
-function ParameterLayer(init_value::NamedTuple)
-    return ParameterLayer(NoConstraint(), init_value, (;))
-end
-
-function ParameterLayer(constraint::AbstractConstraint, init_value::NamedTuple)
-    return ParameterLayer(constraint, init_value, (;))
 end
 
 function (dl::ParameterLayer)(ps, st)
@@ -175,13 +167,15 @@ ODEModel(components, dudt; kwargs...) = ODEModel(components, dudt, kwargs)
 function (m::ODEModel)(x::NamedTuple, ps, st)
     u0 = hasproperty(x, :u0) ? getfield(x, :u0) : m.kwargs[:u0]
     tspan = hasproperty(x, :tspan) ? getfield(x, :tspan) : m.kwargs[:tspan]
-    components = NamedTuple(k => StatefulLuxLayer{true}(v, getfield(ps, k), get_state(getfield(st, k))) for (k, v) in pairs(m.components))
+    component_keys = keys(m.components)
+    component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.components, k), getproperty(ps, k), get_state(getfield(st, k))), component_keys)
+    components = NamedTuple{component_keys}(component_vals)
 
-    function __dudt(u, _, t)
-        m.dudt(components, u, t)
+    function __dudt(u, p, t)
+        m.dudt(components, u, p, t)
     end
 
-    prob = ODEProblem{false}(ODEFunction{false}(__dudt), u0, tspan)
+    prob = ODEProblem{false}(ODEFunction{false}(__dudt), u0, tspan, ps)
     alg = m.kwargs[:alg]
 
     kwargs = merge((;m.kwargs...), x) # overwriting kwargs with x
