@@ -35,3 +35,4 @@ using HybridModelling
 
 ## TODO
 - Make a HybridModelZool library (adapting EcoEvoModelZoo.jl)
+- Remove SciMLSensitivity, Zygote dependency

@@ -156,7 +156,7 @@ end
 _get_ts_obs(data::AbstractArray, segments) = cat([data[ntuple(i -> Colon(), Val(ndims(data) - 1))..., seg] for seg in segments]...; dims=ndims(data)+1)
 _get_ts_obs(data::Union{Tuple, NamedTuple}, i) = map(Base.Fix2(_get_ts_obs, i), data)
 
-Base.eltype(::SegmentedTimeSeries{D}) where D = Vector{D}
+Base.eltype(::SegmentedTimeSeries{D}) where D = Array{eltype(D), ndims(D) + 1}
 
 function tokenize(sdl::SegmentedTimeSeries)
     return SegmentedTimeSeries(sdl.data, 
@@ -181,6 +181,5 @@ function Base.getindex(sdl::SegmentedTimeSeries, token)
     seg = sdl.indices[idx]
     # seg[2] is the segment indices
     segment_data = _get_ts_obs(sdl.data, [seg[2]])
-    # Remove the last dimension (which is size 1) from each element in segment_data
-    return Tuple(dropdims(x, dims=ndims(x)) for x in segment_data)
+    return Tuple(x for x in segment_data)
 end

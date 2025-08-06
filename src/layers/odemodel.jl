@@ -20,6 +20,8 @@ Initial condition layer.
 ## Behavior
     - when applicable, `x.u0` is passed to the wrapped layer; the output is returned, merged with other fields of `x`.
 
+!!!warning
+    Undefined behavior when `ps` is not a NamedTuple
 """
 @concrete struct InitialConditions <: Lux.AbstractLuxWrapperLayer{:ics}
     ics
@@ -35,21 +37,20 @@ function (lics::InitialConditions)(x::AbstractVector{<:NamedTuple}, ps, st)
         return (tuple(sols..., sol), new_st)
     end
     (sols, new_st) = reduce(step, x; init=((), st))
-    return sols, new_st
+    return [sols...], new_st
 end
 
 (lics::InitialConditions{<:ParameterLayer})(ps, st) = begin 
-    @assert haskey(x, :u0) "Parameter must have field `u0`."
+    @assert hasproperty(ps, :u0) "Parameter must have field `u0`."
     return lics.ics(ps, st)
 end
 
 function (lics::InitialConditions{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
-    @assert haskey(x, :u0) "Input `x` must have field `u0`."
+    @assert hasproperty(x, :u0) "Input `x` must have field `u0`."
     new_u0, new_st_u0 = lics.ics(x.u0, ps, st)
     x = merge(x, (;u0 = new_u0)) # merging initial conditions with states
     return x, new_st_u0
 end
-
 
 
 function Lux.initialstates(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:ParameterLayer}})
@@ -63,8 +64,8 @@ function Lux.initialparameters(rng::AbstractRNG, ics::InitialConditions{<:Abstra
 end
 
 function (lics::InitialConditions{<:AbstractVector{<:ParameterLayer}})(x::NamedTuple, ps, st)
-    @assert haskey(x, :u0) && isa(x.u0, Int) "Input `x` must have field `u0` of type Int to index initial conditions."
-    k = keys(ps)[x]
+    @assert hasproperty(x, :u0) && isa(x.u0, Int) "Input `x` must have field `u0` of type Int to index initial conditions."
+    k = keys(ps)[x.u0]
     x, new_st_k = lics.ics[x.u0](ps[k], st[k])
     new_st = merge(st, (;k = new_st_k))
     return x, new_st
@@ -105,6 +106,9 @@ julia> ode_model = ODEModel(components, dudt, tspan = (0f0, 1f0), saveat = range
 julia> ps, st = Lux.setup(Random.default_rng(), ode_model)
 julia> ode_model((; u0 = ones(Float32, 10)), ps, st)
 ```
+
+!!!warning
+    Undefined behavior when `ps` is not a NamedTuple
 """
 @concrete struct ODEModel <: Lux.AbstractLuxWrapperLayer{:components}
     components<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
@@ -112,23 +116,29 @@ julia> ode_model((; u0 = ones(Float32, 10)), ps, st)
     kwargs
 end
 
-ODEModel(components, dudt; kwargs...) = ODEModel(components, dudt, kwargs)
+ODEModel(components, dudt; kwargs...) = ODEModel(components, dudt, NamedTuple(kwargs))
 
 function (m::ODEModel)(x::NamedTuple, ps, st)
-    u0 = hasproperty(x, :u0) ? getfield(x, :u0) : m.kwargs[:u0]
-    tspan = hasproperty(x.kwargs, :tspan) ? getfield(x.kwargs, :tspan) : m.kwargs[:tspan]
+    u0 = hasproperty(x, :u0) ? getproperty(x, :u0) : getproperty(m.kwargs, :u0)
+    tspan = hasproperty(x, :tspan) ? getproperty(x, :tspan) : getproperty(m.kwargs, :tspan)
     component_keys = keys(m.components)
-    component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.components, k), getproperty(ps, k), get_state(getfield(st, k))), component_keys)
+    component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.components, k), getproperty(ps, k), get_state(getproperty(st, k))), component_keys)
     components = NamedTuple{component_keys}(component_vals)
+
+    x = merge(x, (;u0 = nothing, p = nothing)) # otherwise, kwargs will overwrite `u0` and `p` in `prob`
+    # see https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
+    kwargs = merge((;m.kwargs...), x) # overwriting kwargs with x
 
     function __dudt(u, p, t)
         m.dudt(components, u, p, t)
     end
 
-    prob = ODEProblem{false}(ODEFunction{false}(__dudt), u0, tspan, ps)
+    prob = ODEProblem{false}(ODEFunction{false}(__dudt), 
+                            u0 |> ComponentArray, 
+                            tspan, 
+                            ps |> ComponentArray)
     alg = m.kwargs[:alg]
 
-    kwargs = merge((;m.kwargs...), x.kwargs) # overwriting kwargs with x
 
     sol = solve(prob, alg; kwargs...) |> Array
     return sol, st

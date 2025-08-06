@@ -55,9 +55,7 @@ end
 
 ode_model = ODEModel((;params = params), 
                     dudt, alg = Tsit5(),
-                    tspan = tspan, 
-                    saveat = tsteps, 
-                    sensealg = ForwardDiffSensitivity(),)
+                    sensealg = InterpolatingAdjoint(; autojacvec=ZygoteVJP()),)
 ics = InitialConditions(ic_list)
 ode_model_with_ics = Chain(initial_conditions = ics, model = ode_model)
 
@@ -67,27 +65,44 @@ n_segments = length(tokens(dataloader))
 colors = [:blue, :red]
 
 plt = plot()
-for i in 1:n_segments
-    segment_data, segment_tsteps = dataloader[i]
-    predicted = ode_model_with_ics(i, ps, st)[1]
+for tok in tokens(dataloader)
+    segment_data, segment_tsteps = dataloader[tok]
+    predicted = ode_model_with_ics(tok, ps, st)[1]
 
-    color = colors[mod1(i, 2)]
-    plot!(plt, segment_tsteps, segment_data', label=(i == 1 ? "Data" : ""), color=color, linestyle=:solid)
-    plot!(plt, segment_tsteps, predicted', label=(i == 1 ? "Predicted" : ""), color=color, linestyle=:dash)
+    color = colors[mod1(tok, 2)]
+    plot!(plt, segment_tsteps, segment_data', label=(tok == 1 ? "Data" : ""), color=color, linestyle=:solid)
+    plot!(plt, segment_tsteps, predicted', label=(tok == 1 ? "Predicted" : ""), color=color, linestyle=:dash)
 end
 
 display(plt)
 
-ode_model_with_ics([1, 2], ps, st)
+function eval_loss(model, ps, st, dataloader)
+    total_loss = 0.0
+    n_batches = 0
+    for (tokens, (segment_data, _)) in dataloader
+        y_pred, _ = model(tokens, ps, st)
+        total_loss += loss_fn(y_pred, segment_data)
+        n_batches += 1
+    end
+    return total_loss / n_batches
+end
+
+println("Initial Loss: ", eval_loss(ode_model_with_ics, ps, st, dataloader))
 
 train_state = Training.TrainState(ode_model_with_ics, ps, st, Adam(3.0f-4))
 
 n_epochs = 100
 for epoch in 1:n_epochs
-    for (tok, (segment_data, segment_tsteps)) in dataloader
-        train_state = Training.single_train_step(train_state, (;u0 = segment_data[:, 1], tspan = (segment_tsteps[1], segment_tsteps[end]), saveat = segment_tsteps), loss_fn)
+    for (tokens, (segment_data, segment_tsteps)) in dataloader
+        # @show tokens
+        # @show size(segment_data)
+        train_state = Training.single_train_step!(
+            Lux.AutoZygote(), 
+            loss_fn, 
+            (tokens, segment_data),
+            train_state)
     end
     if epoch % 10 == 0
-        println("Epoch $epoch: Loss = $(Training.get_loss(train_state))")
+        println("Epoch $epoch: Loss = ", eval_loss(ode_model_with_ics, train_state.parameters, train_state.states, dataloader))
     end
 end

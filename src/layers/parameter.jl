@@ -17,7 +17,6 @@ A layer representing parameters, optionally with constraints.
   - `st`: States of the layer.
 
 ## Output
-
 - Parameter values constrained by `constraint`, merged with states `st`.
 
 ## Example
@@ -53,7 +52,7 @@ end
 
 function (dl::ParameterLayer)(ps, st)
     ps_tr = dl.constraint(ps)
-    return (merge(ps_tr, st), st)
+    return (ps_tr, st)
 end
 
 # https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
