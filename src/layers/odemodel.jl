@@ -135,9 +135,9 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
     end
 
     prob = ODEProblem{false}(ODEFunction{false}(__dudt), 
-                            u0 |> ComponentArray, 
+                            u0, 
                             tspan, 
-                            ps |> ComponentArray)
+                            ps)
     alg = m.kwargs[:alg]
 
 

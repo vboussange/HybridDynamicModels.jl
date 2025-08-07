@@ -51,7 +51,7 @@ function ParameterLayer(;constraint = NoConstraint(), init_value = (;), init_sta
 end
 
 function (pl::ParameterLayer)(ps, st)
-    ps_tr = pl.constraint(ps)
+    ps_tr = NamedTuple(pl.constraint(ps)) # we transform it to a named tuple, as this may become a feature
     return (ps_tr, st)
 end
 

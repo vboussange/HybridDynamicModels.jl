@@ -7,7 +7,6 @@ using ConcreteStructs: @concrete
 using OrdinaryDiffEq
 import Optimisers
 using DispatchDoctor: @stable
-import ComponentArrays: ComponentArray
 
 export apply
 export SegmentedTimeSeries, tokenize, tokens
