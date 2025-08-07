@@ -142,7 +142,8 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
 
 
     sol = solve(prob, alg; kwargs...) |> Array
-    return sol, st
+    new_st = NamedTuple{component_keys}(map(k -> get_state(getproperty(components, k)), component_keys))
+    return sol, new_st
 end
 (m::ODEModel)(ps, st) = m(NamedTuple(), ps, st)
 

@@ -10,6 +10,8 @@ import Optimisers: Adam
 using Random
 using Printf
 using ComponentArrays
+using Test
+using Mooncake
 
 function dudt(u, p, t)
     @unpack b = p
@@ -27,13 +29,14 @@ data = solve(prob,
             saveat=tsteps,
             abstol = 1e-6,
             reltol = 1e-6,) |> Array
+data_with_noise = data .* exp.(0.1 .* randn(Random.MersenneTwister(1234), size(data)))
 
-plot(tsteps, data')
+plot(tsteps, data_with_noise')
 
 batchsize = 1
-dataloader = SegmentedTimeSeries((data, tsteps), 
-                                segmentsize = 5, 
-                                shift = 4,
+dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
+                                segmentsize = 20, 
+                                shift = 5, 
                                 batchsize = batchsize)
 
 # TODO: bijectors.NamedTransform only works for tuples, and not for ComponentArrays
@@ -44,7 +47,7 @@ loss_fn = MSELoss()
 transform = bijector(Uniform(1e-3, 5e0))
 params = ParameterLayer(constraint = Constraint(transform), 
                         # constraint = NoConstraint(),
-                        init_value = ComponentArray(;b = [0.1, 0.3])
+                        init_value = ComponentArray(;b = [1., 2.])
                         # init_value = ComponentArray(p_true),
                         )
 
@@ -63,7 +66,8 @@ ode_model = ODEModel((;params = params),
                     tspan = tspan,
                     saveat = tsteps,
                     # sensealg = ForwardDiffSensitivity() # works
-                    sensealg = InterpolatingAdjoint(; autojacvec=ZygoteVJP()))
+                    sensealg = GaussAdjoint(autojacvec=ZygoteVJP()) # fails
+                    )
 
 ps, st = Lux.setup(Random.default_rng(), ode_model) 
 
@@ -107,14 +111,14 @@ end
 display(plot_segments(dataloader, mychain, ps, st))
 
 ps = ComponentArray(ps)
-train_state = Training.TrainState(mychain, ps, st, Adam(1e-2))
+train_state = Training.TrainState(mychain, ps, st, Adam(1e-3))
 
-n_epochs = 200
+n_epochs = 1000
 for epoch in 1:n_epochs
     tot_loss = 0.
     for (batched_segments, batched_tsteps) in dataloader
         _, loss, _, train_state = Training.single_train_step!(
-            Lux.AutoZygote(),
+            Lux.AutoEnzyme(),
             loss_fn, 
             ((batched_segments, batched_tsteps), batched_segments),
             train_state)
@@ -126,6 +130,6 @@ for epoch in 1:n_epochs
     end
 end
 
-params(train_state.parameters.model.params, (;)) # this will be a ComponentArray
+@test isapprox(params(train_state.parameters.model.params, (;))[1].b, p_true.b, rtol = 1e-1) # should be true
 
 plot_segments(dataloader, mychain, train_state.parameters, st)

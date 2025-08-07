@@ -8,6 +8,7 @@ using UnPack
 using Plots
 import Optimisers: Adam
 using Random
+using Test
 
 function dudt(u, p, t)
     @unpack b = p
@@ -28,7 +29,7 @@ plot(tsteps, data')
 batchsize = 1
 dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
                                 segmentsize = 20, 
-                                shift = 10, 
+                                shift = 5, 
                                 batchsize = batchsize)
 
 dataloader = tokenize(dataloader)
@@ -56,7 +57,9 @@ ode_model = ODEModel((;params = params),
                     alg = Tsit5(),
                     abstol = 1e-6,
                     reltol = 1e-6,
-                    sensealg = ForwardDiffSensitivity())
+                    # sensealg = ForwardDiffSensitivity()
+                    sensealg = GaussAdjoint(autojacvec=ZygoteVJP()), # fails
+                    )
 ics = InitialConditions(ic_list)
 
 function feature_wrapper((token, tsteps_batch))
@@ -115,11 +118,11 @@ plot_segments(dataloader, ode_model_with_ics, ps, st)
 
 # println("Initial Loss: ", eval_loss(ode_model_with_ics, ps, st, dataloader))
 
-train_state = Training.TrainState(ode_model_with_ics, ps, st, Adam(1f-2))
+train_state = Training.TrainState(ode_model_with_ics, ps, st, Adam(1e-3))
 
-n_epochs = 100
+n_epochs = 1000
 for epoch in 1:n_epochs
-    loss = Inf
+    tot_loss = 0.
     for (batched_tokens, (batched_segments, batched_tsteps)) in dataloader
         # @show tokens
         # @show size(segment_data)
@@ -128,10 +131,14 @@ for epoch in 1:n_epochs
             loss_fn, 
             ((batched_tokens, batched_tsteps), batched_segments),
             train_state)
+        tot_loss += loss
     end
     if epoch % 10 == 0
-        println("Epoch $epoch: Loss = ", loss)
+        println("Epoch $epoch: Total Loss = ", tot_loss)
+        display(plot_segments(dataloader, ode_model_with_ics, train_state.parameters, st))
     end
 end
+
+@test isapprox(params(train_state.parameters.model.params, (;))[1].b, p_true.b, rtol = 1e-2) # should be true
 
 plot_segments(dataloader, ode_model_with_ics, train_state.parameters, st)
