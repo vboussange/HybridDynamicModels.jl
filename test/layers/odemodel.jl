@@ -12,6 +12,7 @@ using OrdinaryDiffEq
 @testset "Initial Conditions" begin
     lics = InitialConditions(ParameterLayer(;init_value = (u0 = rand(3),))) # initial conditions with no constraints
     ps, st = Lux.setup(Random.default_rng(), lics)
+    ps = ComponentArray(ps)
     u0, _, = Lux.apply(lics, ps, st) # expected to work, returns all initial conditions
     @test hasproperty(u0, :u0)
 
@@ -60,6 +61,7 @@ end
                         reltol = 1f-6,
                         sensealg = BacksolveAdjoint(autojacvec=ReverseDiffVJP(true)))
     ps, st = Lux.setup(Random.default_rng(), ode_model)
+    ps = ComponentArray(ps)
     @testset "No chain" begin
         u0 = (;u0 = ones(Float32, 10))
         @testset "Forward pass" begin
@@ -105,7 +107,7 @@ end
 
         model_with_ics = Chain(lics, ode_model)
         ps, st = Lux.setup(Random.default_rng(), model_with_ics)
-
+        ps = ComponentArray(ps)
         # forward pass
         x, _ = model_with_ics(ps, st)
         @test size(x) == (10, 100)

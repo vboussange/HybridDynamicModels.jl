@@ -55,6 +55,8 @@ function (pl::ParameterLayer)(ps, st)
     return (ps_tr, st)
 end
 
+(pl::ParameterLayer)(x, ps, st) = pl(ps, st) # required for compatibility with Lux Training API
+
 # https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
 # we place it here instead of in generics.jl as we specifiy this behavior only for parameter layer, to avoid type piracy
 function (s::StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)

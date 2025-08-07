@@ -3,8 +3,7 @@
 @testset "ParameterLayer" begin
     # no constraint
     param = ParameterLayer(;constraint = NoConstraint(), 
-                        init_value = (;u0 = ones(10)),
-                        init_state_value = (;tspan = (0.0, 1.0), saveat = range(0.0, stop=1.0, length=100)))
+                        init_value = (;u0 = ones(10)))
 
     ps, st = Lux.setup(Random.default_rng(), param)
     kwargs, _ = Lux.apply(param, ps, st)
@@ -20,7 +19,7 @@
 
     ps, st = Lux.setup(Random.default_rng(), param)
     @test !any(ps.a .≈ ones(3)) # should be transformed
-    kwargs, _ = Lux.apply(param, ps, st)
+    kwargs, _ = param(ps, st)
     @test all(kwargs.a .≈ ones(3))
 
     # LEGACY BEHAVIOR
