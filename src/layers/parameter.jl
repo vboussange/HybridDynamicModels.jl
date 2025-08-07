@@ -50,12 +50,13 @@ function ParameterLayer(;constraint = NoConstraint(), init_value = (;), init_sta
     return ParameterLayer(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state_value))
 end
 
-function (dl::ParameterLayer)(ps, st)
-    ps_tr = dl.constraint(ps)
+function (pl::ParameterLayer)(ps, st)
+    ps_tr = pl.constraint(ps)
     return (ps_tr, st)
 end
 
 # https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
+# we place it here instead of in generics.jl as we specifiy this behavior only for parameter layer, to avoid type piracy
 function (s::StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)
     y, st = Lux.apply(s.model, ps, get_state(s))
     set_state!(s, st)

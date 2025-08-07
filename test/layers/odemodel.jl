@@ -15,12 +15,13 @@ using OrdinaryDiffEq
     u0, _, = Lux.apply(lics, ps, st) # expected to work, returns all initial conditions
     @test hasproperty(u0, :u0)
 
-    initial_ics = [ParameterLayer(init_value = (u0 = rand(10),)) for _ in 1:5] # a should be in [0, 1], b has no constraints
+    initial_ics = [ParameterLayer(init_value = (u0 = rand(10), saveat = 1)) for _ in 1:5] # a should be in [0, 1], b has no constraints
     lics = InitialConditions(initial_ics)
     ps, st = Lux.setup(Random.default_rng(), lics)
     @test hasproperty(ps, :u0_1)
     u0, _ = lics((u0 = 1,),  ps, st) # expected to work, returns intitial conditions associated to indices
     @test hasproperty(u0, :u0)
+    @test hasproperty(u0, :saveat)
     # batch mode
     u0s, _ = lics([(u0 = 1,),(u0 = 2,)],  ps, st) # expected to work, returns intitial conditions associated to indices
     @test isa(u0s, AbstractVector)

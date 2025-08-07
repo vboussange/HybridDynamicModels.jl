@@ -181,5 +181,5 @@ function Base.getindex(sdl::SegmentedTimeSeries, token)
     seg = sdl.indices[idx]
     # seg[2] is the segment indices
     segment_data = _get_ts_obs(sdl.data, [seg[2]])
-    return Tuple(x for x in segment_data)
+    return Tuple(dropdims(x, dims=ndims(x)) for x in segment_data)
 end

@@ -48,8 +48,8 @@ end
 function (lics::InitialConditions{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
     @assert hasproperty(x, :u0) "Input `x` must have field `u0`."
     new_u0, new_st_u0 = lics.ics(x.u0, ps, st)
-    x = merge(x, (;u0 = new_u0)) # merging initial conditions with states
-    return x, new_st_u0
+    new_x = merge(x, (;u0 = new_u0)) # merging initial conditions with other fields to carry
+    return new_x, new_st_u0
 end
 
 
@@ -66,9 +66,10 @@ end
 function (lics::InitialConditions{<:AbstractVector{<:ParameterLayer}})(x::NamedTuple, ps, st)
     @assert hasproperty(x, :u0) && isa(x.u0, Int) "Input `x` must have field `u0` of type Int to index initial conditions."
     k = keys(ps)[x.u0]
-    x, new_st_k = lics.ics[x.u0](ps[k], st[k])
+    new_u0, new_st_k = lics.ics[x.u0](ps[k], st[k])
     new_st = merge(st, (;k = new_st_k))
-    return x, new_st
+    new_x = merge(x, (;new_u0...)) # merging initial conditions with other fields to carry
+    return new_x, new_st
 end
 
 """

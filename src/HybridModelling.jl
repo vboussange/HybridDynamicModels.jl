@@ -5,7 +5,6 @@ import Lux: IntegerType, AbstractLuxLayer, AbstractLuxWrapperLayer, StatefulLuxL
 using Random
 using ConcreteStructs: @concrete
 using OrdinaryDiffEq
-using Random
 import Optimisers
 using DispatchDoctor: @stable
 import ComponentArrays: ComponentArray
