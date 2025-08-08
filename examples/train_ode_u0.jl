@@ -1,3 +1,7 @@
+#=
+Fitting initial conditions and parameters with the simple logistic model
+=#
+
 using OrdinaryDiffEq
 using Bijectors
 import Lux
@@ -57,8 +61,7 @@ ode_model = ODEModel((;params = params),
                     alg = Tsit5(),
                     abstol = 1e-6,
                     reltol = 1e-6,
-                    # sensealg = ForwardDiffSensitivity()
-                    sensealg = GaussAdjoint(autojacvec=ZygoteVJP()), # fails
+                    sensealg = ForwardDiffSensitivity()
                     )
 ics = InitialConditions(ic_list)
 
@@ -99,24 +102,6 @@ function plot_segments(dataloader, ode_model_with_ics, ps, st)
 end
 
 plot_segments(dataloader, ode_model_with_ics, ps, st)
-
-# function eval_loss(model, ps, st, dataloader)
-#     total_loss = 0.0
-#     n_batches = 0
-#     for tok in tokens(dataloader)
-#         segment_data, segment_tsteps = dataloader[tok]
-#         u0 = tok
-#         saveat = segment_tsteps
-#         tspan = (segment_tsteps[1], segment_tsteps[end])
-#         predicted = ode_model_with_ics((;u0, saveat, tspan), ps, st)[1]
-#         loss = loss_fn(predicted, segment_data)
-#         total_loss += loss
-#         n_batches += 1
-#     end
-#     return total_loss / n_batches
-# end
-
-# println("Initial Loss: ", eval_loss(ode_model_with_ics, ps, st, dataloader))
 
 train_state = Training.TrainState(ode_model_with_ics, ps, st, Adam(1e-3))
 

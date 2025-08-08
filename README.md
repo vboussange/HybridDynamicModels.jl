@@ -35,4 +35,6 @@ using HybridModelling
 
 ## TODO
 - Make a HybridModelZool library (adapting EcoEvoModelZoo.jl)
-- Remove SciMLSensitivity, Zygote dependency
+- Remove SciMLSensitivity, Zygote, MoonCake, DifferentiationInterface, and ComponentArrays dependencies
+- Resolve problem with NamedTransformation, which does not work with ComponentArrays
+- Debug grad problems with AutoZygote

@@ -1,3 +1,7 @@
+#=
+Fitting parameters only with the simple logistic model.
+=#
+
 using OrdinaryDiffEq
 using Bijectors
 import Lux
@@ -11,7 +15,6 @@ using Random
 using Printf
 using ComponentArrays
 using Test
-using Mooncake
 
 function dudt(u, p, t)
     @unpack b = p
@@ -65,8 +68,7 @@ ode_model = ODEModel((;params = params),
                     u0 = u0,
                     tspan = tspan,
                     saveat = tsteps,
-                    # sensealg = ForwardDiffSensitivity() # works
-                    sensealg = GaussAdjoint(autojacvec=ZygoteVJP()) # fails
+                    sensealg = ForwardDiffSensitivity()
                     )
 
 ps, st = Lux.setup(Random.default_rng(), ode_model) 
@@ -118,7 +120,7 @@ for epoch in 1:n_epochs
     tot_loss = 0.
     for (batched_segments, batched_tsteps) in dataloader
         _, loss, _, train_state = Training.single_train_step!(
-            Lux.AutoEnzyme(),
+            Lux.AutoZygote(),
             loss_fn, 
             ((batched_segments, batched_tsteps), batched_segments),
             train_state)
