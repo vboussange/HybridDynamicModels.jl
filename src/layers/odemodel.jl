@@ -126,9 +126,11 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
     component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.components, k), getproperty(ps, k), get_state(getproperty(st, k))), component_keys)
     components = NamedTuple{component_keys}(component_vals)
 
-    x = merge(x, (;u0 = nothing, p = nothing)) # otherwise, kwargs will overwrite `u0` and `p` in `prob`
-    # see https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
-    kwargs = merge((;m.kwargs...), x) # overwriting kwargs with x
+    # Remove :u0, :p, and :tspan from x if present, so that when x and kwargs
+    # are passed to `solve`, they don't overwrite values in prob see
+    # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
+    kwargs = merge(m.kwargs, x) # overwriting kwargs with x
+    kwargs = Base.structdiff(kwargs, NamedTuple{(:u0, :p, :tspan)}) # keep kwargs that are not in x
 
     function __dudt(u, p, t)
         m.dudt(components, u, p, t)
