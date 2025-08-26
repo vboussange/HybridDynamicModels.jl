@@ -79,9 +79,10 @@ end
 
 function SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
     @assert segmentsize > 1
+    !isnothing(shift) && @assert shift > 0
     @assert batchsize > 0
 
-    isnothing(shift) && (shift = segmentsize)
+    isnothing(shift) && (shift = segmentsize-1)
     datasize = _nobs(data)
 
     # Compute indices for each segment
