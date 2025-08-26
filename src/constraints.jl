@@ -1,5 +1,6 @@
 abstract type AbstractConstraint end
 using Bijectors
+import Bijectors: NamedTransform, transform, logabsdetjac
 
 """
     Constraint(transform)
@@ -26,6 +27,30 @@ end
 _to_optim_space(constraint::Constraint, x) = constraint.transform(x)
 
 const NoConstraint() = Constraint(identity)
+
+# Below is an attempt to support ComponentArray with NamedTransform; for now, it fails
+# fieldnames(T <: Type{<:ComponentVector}) = keys(getaxes(T)[1])
+
+# @generated function transform(
+#     b::NamedTransform{names1}, x::T
+# ) where {names1, T}
+#     exprs = []
+#     for n in fieldnames(T)
+#         if n in names1
+#             # Use processed value
+#             push!(exprs, :($n = b.bs.$n(x.$n)))
+#         else
+#             # Use existing value
+#             push!(exprs, :($n = x.$n))
+#         end
+#     end
+#     return :($(exprs...),)
+# end
+
+# @generated function logabsdetjac(b::NamedTransform{names}, x) where {names}
+#     exprs = [:(logabsdetjac(b.bs.$n, x.$n)) for n in names]
+#     return :(+($(exprs...)))
+# end
 
 # Below is a custom implementation of a box constaint, but it is not as nice 
 # as the solution from Bijectors.jl, since Bijectors.jl works with named tuples of transforms

@@ -50,9 +50,14 @@ function ParameterLayer(;constraint = NoConstraint(), init_value = (;), init_sta
     return ParameterLayer(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state_value))
 end
 
+# Default behavior of ParameterLayer is to merge parameter and state information
+# This is useful to store e.g. t0 associated with u0 when ParameterLayer is used for initial conditions
 function (pl::ParameterLayer)(ps, st)
-    ps_tr = NamedTuple(pl.constraint(ps)) # we transform it to a named tuple, as this may become a feature
-    return (ps_tr, st)
+    # we transform ps to a named tuple, as this may become a feature
+    # Note: this is probably very slow...
+    ps_tr = pl.constraint(NamedTuple(ps))
+    x = merge(ps_tr, st)
+    return (x, st)
 end
 
 (pl::ParameterLayer)(x, ps, st) = pl(ps, st) # required for compatibility with Lux Training API

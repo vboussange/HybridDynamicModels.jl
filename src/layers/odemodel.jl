@@ -80,7 +80,7 @@ Wraps an ODE model for simulation using Lux layers.
 
 ## Arguments
   - `components`: NamedTuple of Lux layers representing the components of the model.
-  - `dudt`: Function that computes the derivative of the state, with signature `dudt(components, ps, u, t)`.
+  - `dudt`: Function that computes the derivative of the state, with signature `dudt(components, u, ps, t)`.
   - `kwargs`: Additional keyword arguments passed to the solver (e.g., `tspan`, `saveat`, `alg`).
 
 ## Inputs
@@ -114,7 +114,7 @@ julia> ode_model((; u0 = ones(Float32, 10)), ps, st)
 """
 @concrete struct ODEModel <: Lux.AbstractLuxWrapperLayer{:components}
     components<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
-    dudt<:Function # function that computes the derivative
+    dudt # function that computes the derivative
     kwargs
 end
 
@@ -123,6 +123,7 @@ ODEModel(components, dudt; kwargs...) = ODEModel(components, dudt, NamedTuple(kw
 function (m::ODEModel)(x::NamedTuple, ps, st)
     u0 = hasproperty(x, :u0) ? getproperty(x, :u0) : getproperty(m.kwargs, :u0)
     tspan = hasproperty(x, :tspan) ? getproperty(x, :tspan) : getproperty(m.kwargs, :tspan)
+    saveat = hasproperty(x, :saveat) ? getproperty(x, :saveat) : getproperty(m.kwargs, :saveat)
     component_keys = keys(m.components)
     component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.components, k), getproperty(ps, k), get_state(getproperty(st, k))), component_keys)
     components = NamedTuple{component_keys}(component_vals)
@@ -130,8 +131,8 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
     # Remove :u0, :p, and :tspan from x if present, so that when x and kwargs
     # are passed to `solve`, they don't overwrite values in prob see
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
-    kwargs = merge(m.kwargs, x) # overwriting kwargs with x
-    kwargs = Base.structdiff(kwargs, NamedTuple{(:u0, :p, :tspan)}) # keep kwargs that are not in x
+    # kwargs = merge(m.kwargs, x) # overwriting kwargs with x
+    kwargs = Base.structdiff(m.kwargs, NamedTuple{(:u0, :p, :tspan, :saveat)}) # keep kwargs that are not in x
 
     function __dudt(u, p, t)
         m.dudt(components, u, p, t)
@@ -141,10 +142,10 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
                             u0, 
                             tspan, 
                             ps)
-    alg = m.kwargs[:alg]
+    alg = kwargs[:alg]
 
 
-    sol = solve(prob, alg; kwargs...) |> Array
+    sol = solve(prob, alg; saveat, kwargs...) |> Array
     new_st = NamedTuple{component_keys}(map(k -> get_state(getproperty(components, k)), component_keys))
     return sol, new_st
 end
