@@ -61,3 +61,10 @@ end
 
 Lux.initialstates(::AbstractRNG, layer::ParameterLayer) = layer.init_state()
 Lux.initialparameters(::AbstractRNG, layer::ParameterLayer) = layer.init_value()
+
+# https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
+function (s::StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)
+    y, st = s.model(ps, get_state(s))
+    set_state!(s, st)
+    return y
+end
