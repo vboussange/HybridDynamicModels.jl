@@ -13,11 +13,11 @@ export SegmentedTimeSeries, tokenize, tokens
 export Constraint, NoConstraint
 export ParameterLayer
 export InitialConditions, ODEModel
-export BayesianLayer, priors
+export BayesianLayer, getpriors
 
 include("data.jl")
 include("constraints.jl")
-include("generics.jl")
+# include("generics.jl")
 include("layers/parameter.jl")
 include("layers/odemodel.jl")
 include("layers/bayesian_layer.jl")

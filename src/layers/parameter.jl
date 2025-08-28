@@ -37,9 +37,6 @@ true
     init_value <: Function
     init_state <: Function
 end
-isfeatureless(::Type{<:ParameterLayer}) = Val(true)
-isfeatureless(::Type{<:StatefulLuxLayer{ST, M, psType, stType}}) where {ST, M <: ParameterLayer, psType, stType} = Val(true)
-
 
 function ParameterLayer(;constraint = NoConstraint(), init_value = (;), init_state_value = (;))
     isa(init_state_value, NamedTuple) || throw(ArgumentError("`init_state_value` must be a `NamedTuple`"))
@@ -60,15 +57,7 @@ function (pl::ParameterLayer)(ps, st)
     return (x, st)
 end
 
-(pl::ParameterLayer)(x, ps, st) = pl(ps, st) # required for compatibility with Lux Training API
-
-# https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
-# we place it here instead of in generics.jl as we specifiy this behavior only for parameter layer, to avoid type piracy
-function (s::StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)
-    y, st = Lux.apply(s.model, ps, get_state(s))
-    set_state!(s, st)
-    return y
-end
+(pl::ParameterLayer)(_, ps, st) = pl(ps, st) # required for compatibility with Lux Training API
 
 Lux.initialstates(::AbstractRNG, layer::ParameterLayer) = layer.init_state()
 Lux.initialparameters(::AbstractRNG, layer::ParameterLayer) = layer.init_value()
