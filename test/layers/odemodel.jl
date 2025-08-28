@@ -11,10 +11,10 @@ using ComponentArrays
 
 ######## Initial Conditions tests ########
 @testset "Initial Conditions" begin
-    lics = InitialConditions(ParameterLayer(;init_value = (u0 = rand(3),))) # initial conditions with no constraints
+    lics = InitialConditions(ParameterLayer(;init_value = (;u0 = rand(3),))) # initial conditions with no constraints
     ps, st = Lux.setup(Random.default_rng(), lics)
     ps = ComponentArray(ps)
-    u0, _, = Lux.apply(lics, ps, st) # expected to work, returns all initial conditions
+    u0, _, = Lux.apply(lics, (), ps, st) # expected to work, returns all initial conditions
     @test hasproperty(u0, :u0)
 
     initial_ics = [ParameterLayer(init_value = (;u0 = rand(10))) for _ in 1:5] # a should be in [0, 1], b has no constraints
@@ -84,6 +84,7 @@ end
         rng = MersenneTwister(1234)
         model_with_ics = Chain(lics, ode_model)
         ps, st = Lux.setup(rng, model_with_ics)
+        ps = ComponentArray(ps)
 
         # forward pass
         ys = model_with_ics((u0 = [1.],), ps, st)[1]
@@ -109,11 +110,11 @@ end
         ps, st = Lux.setup(Random.default_rng(), model_with_ics)
         ps = ComponentArray(ps)
         # forward pass
-        x, _ = model_with_ics(ps, st)
+        x, _ = model_with_ics((), ps, st)
         @test size(x) == (10, 100)
 
         # backward pass
-        fun = ps -> sum(model_with_ics(ps, st)[1])
+        fun = ps -> sum(model_with_ics((), ps, st)[1])
         fun(ps)
         grad = value_and_gradient(fun, AutoZygote(), ps)[2]
         @test all(!isnothing(grad[k] for k in keys(grad)))
@@ -127,6 +128,7 @@ end
 
         model_with_ics = Chain(lics, ode_model)
         ps, st = Lux.setup(Random.default_rng(), model_with_ics)
+        ps = ComponentArray(ps)
 
         # forward pass
         x, _ = model_with_ics((u0 = 3,), ps, st)
