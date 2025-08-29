@@ -26,6 +26,7 @@ include("layers/odemodel.jl")
 include("layers/bayesian_layer.jl")
 include("loss_fn.jl")
 
+include("train/generics.jl")
 include("train/lux_trainer.jl")
 include("train/mcmc_trainer.jl")
 include("train/vi_trainer.jl")

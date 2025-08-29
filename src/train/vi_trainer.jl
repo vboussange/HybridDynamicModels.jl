@@ -1,5 +1,25 @@
 
-struct VIBackend <: AbstractOptimBackend end
+using ComponentArrays
+using ConcreteStructs: @concrete
+import HybridModelling: SegmentedTimeSeries
+import Turing: @model, arraydist, q_meanfield_gaussian, vi
+import Lux
+
+"""
+    VIBackend <: AbstractOptimBackend
+
+Training backend for Variational Inference (VI) of Bayesian models using Turing.jl.
+
+## Constructor
+```julia
+VIBackend()
+```
+
+## Notes
+This backend is currently under development and may have incomplete functionality.
+Use for variational approximation of posterior distributions when MCMC is too slow.
+"""
+@concrete struct VIBackend <: AbstractOptimBackend end
 
 function train(::VIBackend,
                 model::AbstractLuxLayer,

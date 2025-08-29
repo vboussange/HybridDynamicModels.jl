@@ -3,6 +3,7 @@ using Optimisers
 using ADTypes
 using ConcreteStructs: @concrete
 import HybridModelling: SegmentedTimeSeries
+import Lux: Training
 
 """
     LuxBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
