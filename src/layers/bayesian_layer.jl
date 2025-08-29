@@ -2,6 +2,47 @@ using Distributions
 import Turing: arraydist
 import Lux: LuxCore, AbstractLuxContainerLayer
 
+"""
+    BayesianLayer(layer, priors)
+
+Wrapper layer that adds Bayesian priors to any Lux layer for probabilistic modeling and MCMC inference. Behaves identically to the wrapped layer, but compatible with `getpriors()` to extract prior distributions for MCMC sampling
+Required for probabilistic inference with `MCMCBackend`. Prior structure should match the parameter structure of the wrapped layer. Use `arraydist()` for array-valued parameters to ensure proper dimensionality
+## Arguments
+- `layer`: Any Lux layer to be given Bayesian treatment
+- `priors`: Prior distributions, either:
+  - A single `Distribution` applied to all parameters
+  - A `NamedTuple` with distribution for each parameter group
+  - Use `arraydist()` for array-valued parameters
+
+## Examples
+```julia
+# Dense layer with Normal priors on all parameters
+dense_layer = Dense(10, 5)
+bayesian_dense = BayesianLayer(dense_layer, Normal(0, 1))
+
+# Parameter layer with structured priors
+param_layer = ParameterLayer(init_value = (a = [1.0, 2.0], b = 0.5))
+priors = (
+    a = arraydist(fill(Normal(0, 1), 2)),  # Prior for vector parameter
+    b = Normal(0, 0.1)                     # Prior for scalar parameter
+)
+bayesian_params = BayesianLayer(param_layer, priors)
+
+# ODEModel with parameter priors
+ode_model = ODEModel(components, dudt; kwargs...)
+param_priors = (
+    params = (
+        growth_rate = Uniform(0.1, 2.0),
+        carrying_capacity = LogNormal(log(10), 0.5)
+    )
+)
+bayesian_ode = BayesianLayer(ode_model, param_priors)
+
+# Extract priors for MCMC
+priors = getpriors(bayesian_ode)
+```
+"""
+
 @concrete struct BayesianLayer <: AbstractLuxWrapperLayer{:layer}
     layer <: AbstractLuxLayer
     priors <: Union{Distributions.Distribution, NamedTuple}
@@ -25,6 +66,39 @@ end
 # But since use case is marginal, we can also define it by hand
 # priors(::Union{AbstractLuxLayer,Nothing}) = (;)
 
+"""
+    getpriors(layer)
+
+Extract prior distributions from Bayesian layers in a model hierarchy.
+
+## Arguments
+- `layer`: A composition of `BayesianLayer`s or a `StatefulLuxLayer` wrapping a composition of `BayesianLayer`s.
+
+## Returns
+- For `BayesianLayer`: The associated prior distributions
+- For container layers (`Chain`, etc.): NamedTuple of priors from child layers  
+- For regular layers: Empty NamedTuple `(;)`
+
+## Examples
+```julia
+# Single Bayesian layer
+bayesian_dense = BayesianLayer(Dense(10, 5), Normal(0, 1))
+priors = getpriors(bayesian_dense)
+
+# Complex model with multiple Bayesian components
+model = Chain(
+    encoder = BayesianLayer(Dense(10, 5), Normal(0, 1)),
+    ode_model = BayesianLayer(ode_component, param_priors),
+    decoder = Dense(5, 1)  # No priors
+)
+all_priors = getpriors(model)
+# Returns: (encoder = ..., ode_model = ..., decoder = (;))
+
+# Use with MCMC training
+backend = MCMCBackend(NUTS(), 1000, LogNormal)
+priors = getpriors(model)  # Automatically used by MCMC training
+```
+"""
 getpriors(l::BayesianLayer{L, P}) where {L, P <: NamedTuple} = l.priors
 
 function getpriors(l::BayesianLayer{L, D}) where {L, D<:Distributions.Distribution}
