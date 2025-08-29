@@ -13,28 +13,40 @@ using Plots
 import Optimisers: Adam
 using Random
 using Test
+using ComponentArrays
+using Distributions
+import Turing: arraydist
 
-function dudt(u, p, t)
-    @unpack b = p
-    return 0.1 .* u .* ( 1. .- b .* u) 
+const σ = 0.1
+
+function get_data()
+    function dudt(u, p, t)
+        @unpack b = p
+        return 0.1 .* u .* ( 1. .- b .* u) 
+    end
+
+    tsteps = 1.:1:100.
+    tspan = (tsteps[1], tsteps[end])
+
+    p_true = (;b = [0.23, 0.5],)
+    u0 = ones(2)
+    prob = ODEProblem(ODEFunction{false}(dudt), u0, tspan, p_true)
+    data = solve(prob, 
+                Tsit5(), 
+                saveat=tsteps,
+                abstol = 1e-6,
+                reltol = 1e-6,) |> Array
+    data_with_noise = rand(arraydist(LogNormal.(log.(data), σ)))
+    return data_with_noise, tsteps
 end
+data_with_noise, tsteps = get_data()
+plot(tsteps, data_with_noise')
 
-tsteps = 1.:1:100.
-tspan = (tsteps[1], tsteps[end])
-
-p_true = (;b = [0.23, 0.5],)
-u0 = ones(2)
-prob = ODEProblem(ODEFunction{false}(dudt), u0, tspan, p_true)
-data = solve(prob, Tsit5(), saveat=tsteps) |> Array
-data_with_noise = data .* exp.(0.1 .* randn(size(data)))
-
-plot(tsteps, data')
-
-batchsize = 1
+batchsize = 1 #TODO: SegmentedTimeSeries should default to full batch
 dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
                                 segmentsize = 20, 
-                                shift = 5, 
-                                batchsize = batchsize)
+                                shift = 5,
+                                batchsize=batchsize)
 
 dataloader = tokenize(dataloader)
 
@@ -45,7 +57,7 @@ for tok in tokens(dataloader)
     push!(ic_list, ParameterLayer(constraint = NoConstraint(), init_value = (;u0)))
 end
 
-loss_fn = MSELoss()
+loss_fn = MSELoss() # TODO: change to a log loss
 # transform = Bijectors.NamedTransform((; b = bijector(Uniform(1e-3, 5e0))))
 params = ParameterLayer(constraint = NoConstraint(), 
                         init_value = (;b = [1., 2.]))
@@ -58,9 +70,9 @@ end
 
 ode_model = ODEModel((;params = params), 
                     dudt,
-                    alg = Tsit5(),
-                    abstol = 1e-6,
-                    reltol = 1e-6,
+                    alg = BS3(),
+                    abstol = 1e-3,
+                    reltol = 1e-3,
                     sensealg = ForwardDiffSensitivity()
                     )
 ics = InitialConditions(ic_list)
@@ -106,7 +118,7 @@ plot_segments(dataloader, ode_model_with_ics, ps, st)
 train_state = Training.TrainState(ode_model_with_ics, ps, st, Adam(1e-3))
 
 n_epochs = 1000
-for epoch in 1:n_epochs
+@time for epoch in 1:n_epochs
     tot_loss = 0.
     for (batched_tokens, (batched_segments, batched_tsteps)) in dataloader
         # @show tokens
@@ -123,6 +135,7 @@ for epoch in 1:n_epochs
         display(plot_segments(dataloader, ode_model_with_ics, train_state.parameters, st))
     end
 end
+# approx 18 secs, converges after 10 its
 
 @test isapprox(params(train_state.parameters.model.params, (;))[1].b, p_true.b, rtol = 1e-2) # should be true
 

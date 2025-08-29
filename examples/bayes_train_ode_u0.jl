@@ -78,7 +78,9 @@ plot(tsteps, data_with_noise')
 
 
 dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
-                                segmentsize = 10, shift = 9,)
+                                segmentsize = 20, 
+                                shift = 5,
+                                batchsize=1)
 dataloader = tokenize(dataloader)
 
 xs = []
@@ -116,8 +118,9 @@ ode_model_with_ics = Chain(initial_conditions = ics, model = ode_model)
 ps_init, st = Lux.setup(Random.default_rng(), ode_model_with_ics) 
 st_model = StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)
 
-N = 10000
-ch = sample(bayes_fit(xs, ys, ps_init), HMC(0.05, 4; adtype=AutoForwardDiff()), N)
+N = 1000
+@time ch = sample(bayes_fit(xs, ys, ps_init), HMC(0.05, 4; adtype=AutoForwardDiff()), N)
+# 18 secs, poor results
 describe(ch)
 Plots.plot(ch[3000:end])
 

@@ -17,7 +17,6 @@ export BayesianLayer, getpriors
 
 include("data.jl")
 include("constraints.jl")
-# include("generics.jl")
 include("layers/parameter.jl")
 include("layers/odemodel.jl")
 include("layers/bayesian_layer.jl")
