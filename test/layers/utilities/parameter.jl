@@ -1,4 +1,11 @@
 
+using Test
+using HybridModelling
+using Random
+using Lux
+using Bijectors
+using Distributions
+
 ######## ParameterLayer tests ########
 @testset "ParameterLayer" begin
     # no constraint

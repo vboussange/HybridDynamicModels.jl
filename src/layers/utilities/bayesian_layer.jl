@@ -29,7 +29,7 @@ priors = (
 bayesian_params = BayesianLayer(param_layer, priors)
 
 # ODEModel with parameter priors
-ode_model = ODEModel(components, dudt; kwargs...)
+ode_model = ODEModel(layers, dudt; kwargs...)
 param_priors = (
     params = (
         growth_rate = Uniform(0.1, 2.0),
@@ -85,7 +85,7 @@ Extract prior distributions from Bayesian layers in a model hierarchy.
 bayesian_dense = BayesianLayer(Dense(10, 5), Normal(0, 1))
 priors = getpriors(bayesian_dense)
 
-# Complex model with multiple Bayesian components
+# Complex model with multiple Bayesian layers
 model = Chain(
     encoder = BayesianLayer(Dense(10, 5), Normal(0, 1)),
     ode_model = BayesianLayer(ode_component, param_priors),
@@ -136,3 +136,31 @@ function getpriors(l)
     return LuxCore.Internal.fmap(getpriors, l; exclude=LuxCore.Internal.isleaf)
 end
 
+
+# TODO: implement test
+function Turing.sample(rng::AbstractRNG, model::Union{AbstractLuxLayer, StatefulLuxLayer},
+        chain::Turing.MCMCChains.Chains, args...; kwargs...)
+    priors = getpriors(model)
+    posterior_samples = sample(rng, chain, args...; kwargs...)
+    mat = Array(posterior_samples)              # rows = draws, cols = flattened params
+    n = size(mat, 1)
+
+    # infer element type from first sample (or from a zero-length dummy)
+    elty = if n > 0
+        typeof(_vector_to_parameters(mat[1, :], priors))
+    else
+        typeof(_vector_to_parameters(zeros(Lux.parameterlength(priors)), priors))
+    end
+
+    samples = Vector{elty}(undef, n)
+    for i in 1:n
+        samples[i] = _vector_to_parameters(mat[i, :], priors)
+    end
+
+    return samples
+end
+
+function Turing.sample(model::Union{AbstractLuxLayer, StatefulLuxLayer},
+        chain::Turing.MCMCChains.Chains, args...; kwargs...)
+    return sample(Random.default_rng(), model, chain, args...; kwargs...)
+end

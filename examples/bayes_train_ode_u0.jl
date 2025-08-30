@@ -96,8 +96,8 @@ for tok in tokens(dataloader)
 end
 ics = InitialConditions(ic_list)
 
-function dudt(components, u, ps, t)
-    p = components.params(ps.params)
+function dudt(layers, u, ps, t)
+    p = layers.params(ps.params)
     @unpack b = p
     return 0.1 .* u .* ( 1. .- b .* u) 
 end

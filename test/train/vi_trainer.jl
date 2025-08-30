@@ -60,8 +60,8 @@ using UnPack
         # Create simple model (though VI training may not work fully)
         params = ParameterLayer(init_value = (b = [0.5, 0.5],))
         
-        function dudt(components, u, ps, t)
-            p = components.params(ps.params)
+        function dudt(layers, u, ps, t)
+            p = layers.params(ps.params)
             @unpack b = p
             return 0.1 .* u .* (1.0 .- b .* u)
         end
@@ -109,8 +109,8 @@ using UnPack
         
         # Simple model
         params = ParameterLayer(init_value = (b = [0.5, 0.5],))
-        function dudt(components, u, ps, t)
-            p = components.params(ps.params)
+        function dudt(layers, u, ps, t)
+            p = layers.params(ps.params)
             @unpack b = p
             return 0.1 .* u .* (1.0 .- b .* u)
         end
@@ -147,8 +147,8 @@ using UnPack
         dataloader = SegmentedTimeSeries(data; segmentsize=6, shift=3, batchsize=1)
         
         params = ParameterLayer(init_value = (b = [0.5, 0.5],))
-        function dudt(components, u, ps, t)
-            p = components.params(ps.params)
+        function dudt(layers, u, ps, t)
+            p = layers.params(ps.params)
             @unpack b = p
             return 0.1 .* u .* (1.0 .- b .* u)
         end

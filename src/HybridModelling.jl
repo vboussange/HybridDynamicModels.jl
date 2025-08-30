@@ -12,7 +12,7 @@ export apply
 export SegmentedTimeSeries, tokenize, tokens
 export Constraint, NoConstraint
 export ParameterLayer
-export InitialConditions, ODEModel
+export InitialConditions, ODEModel, AnalyticModel, ARModel
 export BayesianLayer, getpriors
 export LogMSELoss
 
@@ -22,7 +22,10 @@ export LuxBackend, MCMCBackend, VIBackend
 include("data.jl")
 include("constraints.jl")
 include("layers/parameter.jl")
-include("layers/odemodel.jl")
+include("layers/models/model.jl")
+include("layers/models/odemodel.jl")
+include("layers/models/analyticmodel.jl")
+include("layers/models/armodel.jl")
 include("layers/bayesian_layer.jl")
 include("loss_fn.jl")
 

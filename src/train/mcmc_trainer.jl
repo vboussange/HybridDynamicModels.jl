@@ -64,34 +64,6 @@ function MCMCBackend(sampler,
     return MCMCBackend(sampler, n_iterations, datadistrib, kwargs)
 end
 
-# TODO: implement test
-function Turing.sample(rng::AbstractRNG, model::Union{AbstractLuxLayer, StatefulLuxLayer},
-        chain::Turing.MCMCChains.Chains, args...; kwargs...)
-    priors = getpriors(model)
-    posterior_samples = sample(rng, chain, args...; kwargs...)
-    mat = Array(posterior_samples)              # rows = draws, cols = flattened params
-    n = size(mat, 1)
-
-    # infer element type from first sample (or from a zero-length dummy)
-    elty = if n > 0
-        typeof(_vector_to_parameters(mat[1, :], priors))
-    else
-        typeof(_vector_to_parameters(zeros(Lux.parameterlength(priors)), priors))
-    end
-
-    samples = Vector{elty}(undef, n)
-    for i in 1:n
-        samples[i] = _vector_to_parameters(mat[i, :], priors)
-    end
-
-    return samples
-end
-
-function Turing.sample(model::Union{AbstractLuxLayer, StatefulLuxLayer},
-        chain::Turing.MCMCChains.Chains, args...; kwargs...)
-    return sample(Random.default_rng(), model, chain, args...; kwargs...)
-end
-
 function _vector_to_parameters(ps_new::AbstractVector, ps::NamedTuple)
     @assert length(ps_new) == Lux.parameterlength(ps)
     i = 1

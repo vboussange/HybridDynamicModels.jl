@@ -62,8 +62,8 @@ loss_fn = MSELoss() # TODO: change to a log loss
 params = ParameterLayer(constraint = NoConstraint(), 
                         init_value = (;b = [1., 2.]))
 
-function dudt(components, u, ps, t)
-    p = components.params(ps.params)
+function dudt(layers, u, ps, t)
+    p = layers.params(ps.params)
     @unpack b = p
     return 0.1 .* u .* ( 1. .- b .* u) 
 end

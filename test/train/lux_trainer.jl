@@ -62,11 +62,11 @@ using UnPack
         # Create dataloader
         dataloader = SegmentedTimeSeries(data; segmentsize=20, shift=15, batchsize=1)
         
-        # Create model components
+        # Create model layers
         params = ParameterLayer(init_value = (b = [1.0, 1.0],))
         
-        function dudt(components, u, ps, t)
-            p = components.params(ps.params)
+        function dudt(layers, u, ps, t)
+            p = layers.params(ps.params)
             @unpack b = p
             return 0.1 .* u .* (1.0 .- b .* u)
         end
@@ -108,11 +108,11 @@ using UnPack
         # Create dataloader
         dataloader = SegmentedTimeSeries(data; segmentsize=15, shift=10, batchsize=1)
         
-        # Create model components
+        # Create model layers
         params = ParameterLayer(init_value = (b = [1.0, 1.0],))
         
-        function dudt(components, u, ps, t)
-            p = components.params(ps.params)
+        function dudt(layers, u, ps, t)
+            p = layers.params(ps.params)
             @unpack b = p
             return 0.1 .* u .* (1.0 .- b .* u)
         end
@@ -151,8 +151,8 @@ using UnPack
         
         # Simple model
         params = ParameterLayer(init_value = (b = [1.0, 1.0],))
-        function dudt(components, u, ps, t)
-            p = components.params(ps.params)
+        function dudt(layers, u, ps, t)
+            p = layers.params(ps.params)
             @unpack b = p
             return 0.1 .* u .* (1.0 .- b .* u)
         end

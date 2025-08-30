@@ -10,31 +10,27 @@
 
 ---
 
-`HybridModelling.jl` provides a unified framework for building, training, and analyzing hybrid dynamical models that seamlessly integrate traditional scientific models with machine learning components. Built on `Lux.jl`, it enables both gradient-based optimization and Bayesian inference for uncertainty quantification.
+`HybridModelling.jl` provides a unified framework for building, training, and analyzing hybrid dynamical models that seamlessly integrate traditional scientific models with machine learning layers. Built on `Lux.jl`, it enables both gradient-based optimization and Bayesian inference for uncertainty quantification.
 
 ## 🚀 Key Features
 
-### **Flexible Model Components**
-- **`ODEModel`**: Neural ODEs and hybrid differential equation models
+### **Dynamical model layers**
+- **`InitialConditions`**: For initial condition inference
+- **`ODEModel`**: Neural ODEs
+- **`ARModel`**: Autoregressive models
+- **`AnalyticModel`**: For explicit dynamical models
+
+### **Utility layers for hybrid modelling**
 - **`ParameterLayer`**: Learnable parameters with optional constraints
-- **`InitialConditions`**: Flexible initial condition handling for segmented data
 - **`BayesianLayer`**: Add probabilistic priors to any Lux layer
 
-### **Advanced Training Backends** 
+### **Data loaders**
+- **`SegmentedTimeSeries`**: Time series data loader with segmentation, implementing mini-batching.
+
+### **Training API, with following backends** 
 - **`LuxBackend`**: Fast gradient-based optimization with automatic differentiation
 - **`MCMCBackend`**: Full Bayesian inference with uncertainty quantification  
 - **`VIBackend`**: Variational inference for scalable approximate Bayesian methods
-
-### **Data Management**
-- **`SegmentedTimeSeries`**: Efficient handling of time series segments for training
-- **Flexible constraints**: Physics-informed parameter bounds using `Bijectors.jl`
-- **Custom loss functions**: Including `LogMSELoss` for positive-valued data
-
-### **Ecosystem Integration**
-- **`Lux.jl`**: Modern neural network framework with excellent AD support
-- **`Turing.jl`**: Bayesian inference and probabilistic programming
-- **`SciML`**: Differential equations and scientific machine learning
-- **`Bijectors.jl`**: Transformations and constraints for parameters
 
 ## 📦 Installation
 
@@ -52,18 +48,18 @@ using HybridModelling
 using Lux, OrdinaryDiffEq, Optimisers
 using ComponentArrays, Random
 
-# Define hybrid model components
+# Define hybrid model layers
 neural_layer = Dense(2, 2, tanh)
 param_layer = ParameterLayer(init_value = (growth_rate = [0.1, 0.2],))
 
 # Hybrid dynamics combining neural network and domain knowledge
-function hybrid_dynamics(components, u, ps, t)
+function hybrid_dynamics(layers, u, ps, t)
     # Domain-specific term
-    domain_params = components.params(ps.params)
+    domain_params = layers.params(ps.params)
     growth_term = domain_params.growth_rate .* u
     
     # Neural network term  
-    neural_term = components.neural(u, ps.neural)
+    neural_term = layers.neural(u, ps.neural)
     
     return growth_term + neural_term
 end
@@ -147,14 +143,6 @@ end
 ```
 
 ## 📚 Documentation
-
-### Core Components
-
-- **[Model Layers](docs/layers.md)**: `ODEModel`, `ParameterLayer`, `InitialConditions`, `BayesianLayer`
-- **[Training Backends](docs/training.md)**: `LuxBackend`, `MCMCBackend`, `VIBackend` 
-- **[Data Management](docs/data.md)**: `SegmentedTimeSeries`, data preprocessing
-- **[Constraints](docs/constraints.md)**: Parameter bounds and transformations
-
 ### Examples
 
 - **[Scientific Models](examples/)**: Population dynamics, chemical kinetics, epidemiology
@@ -162,17 +150,8 @@ end
 - **[Bayesian Inference](examples/bayesian.jl)**: Uncertainty quantification workflows
 - **[Parameter Estimation](examples/parameter_estimation.jl)**: Learning physical parameters
 
-## 🎯 Use Cases
-
-- **Scientific Computing**: Add ML components to mechanistic models
-- **Parameter Estimation**: Learn unknown parameters from data with uncertainty
-- **Neural ODEs**: Differentiable programming for continuous-time models  
-- **Digital Twins**: Hybrid models combining physics and data-driven components
-- **Uncertainty Quantification**: Bayesian approaches for robust predictions
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+### API
+Checkout the API documentation.
 
 ## 📄 License
 
@@ -180,8 +159,18 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 🙏 Acknowledgments
 
-Built on the excellent Julia SciML ecosystem, particularly:
+Built on the excellent LuxDL, SciML and TuringLang ecosystem, particularly:
 - [Lux.jl](https://github.com/LuxDL/Lux.jl) for neural networks
 - [SciMLSensitivity.jl](https://github.com/SciML/SciMLSensitivity.jl) for automatic differentiation
-- [Turing.jl](https://github.com/TuringLang/Turing.jl) for Bayesian inference
 - [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) for differential equations
+- [Turing.jl](https://github.com/TuringLang/Turing.jl) for Bayesian inference
+- [Bijectors.jl](https://github.com/TuringLang/Bijectors.jl) for parameter transformations
+
+
+## ⏭️ Roadmap
+- [ ] Handle multivariate distribution in Turing backend
+- [ ] Revise tests
+- [ ] Implement conditional loading of Lux, Turing and OrdinaryDiffEq
+- [ ] Implement ARModel
+- [ ] Implement AnalyticModel
+- [ ] Handle initial conditions in training backend

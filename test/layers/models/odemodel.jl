@@ -50,9 +50,9 @@ end
 
 ######### ODEModel tests ########
 @testset "ODEModel" begin
-    components = (; layer1 = Lux.Dense(10, 10, relu))
-    dudt(components, u, ps, t) = components.layer1(u, ps.layer1)
-    ode_model = ODEModel(components, 
+    layers = (; layer1 = Lux.Dense(10, 10, relu))
+    dudt(layers, u, ps, t) = layers.layer1(u, ps.layer1)
+    ode_model = ODEModel(layers, 
                         dudt,
                         tspan = (0.0f0, 1.0f0), 
                         saveat = range(0.0f0, stop=1.0f0, length=100), 
