@@ -1,4 +1,6 @@
-using ComponentArrays
+module HybridModellingLuxExt
+
+using Turing
 using Optimisers
 using ADTypes
 using ConcreteStructs: @concrete
@@ -54,13 +56,12 @@ function LuxBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency = 10,
     return LuxBackend(opt, n_epochs, adtype, loss_fn, verbose_frequency, callback)
 end
 
-# TODO: implement test
 function train(backend::LuxBackend,
         model::AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         infer_ics::InferICs,
         rng = Random.default_rng();
-        luxtype = Lux.f64)
+        pstype = Lux.f64)
     dataloader = tokenize(dataloader)
 
     ic_list = ParameterLayer[]
@@ -90,7 +91,7 @@ function train(backend::LuxBackend,
         initial_conditions = ics, model = model)
 
     ps, st = Lux.setup(rng, ode_model_with_ics)
-    ps = ps |> luxtype |> ComponentArray # We transforms ps to support all sensealg from SciMLSensitivity
+    ps = ps |> pstype
 
     train_state = Training.TrainState(ode_model_with_ics, ps, st, backend.opt)
     best_ps = ps
@@ -127,3 +128,6 @@ end
 
 get_parameter_values(train_state::Training.TrainState) = train_state.parameters
 get_state_values(train_state::Training.TrainState) = train_state.states
+
+
+end

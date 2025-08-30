@@ -21,13 +21,15 @@ export LuxBackend, MCMCBackend, VIBackend
 
 include("data.jl")
 include("constraints.jl")
-include("layers/parameter.jl")
+include("loss_fn.jl")
+
+include("layers/utilities/parameter.jl")
+include("layers/utilities/bayesian_layer.jl")
+
 include("layers/models/model.jl")
 include("layers/models/odemodel.jl")
 include("layers/models/analyticmodel.jl")
 include("layers/models/armodel.jl")
-include("layers/bayesian_layer.jl")
-include("loss_fn.jl")
 
 include("train/generics.jl")
 include("train/lux_trainer.jl")

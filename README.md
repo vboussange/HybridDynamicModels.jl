@@ -174,3 +174,4 @@ Built on the excellent LuxDL, SciML and TuringLang ecosystem, particularly:
 - [ ] Implement ARModel
 - [ ] Implement AnalyticModel
 - [ ] Handle initial conditions in training backend
+- [ ] https://github.com/JuliaDiff/DifferentiationInterface.jl/blob/main/DifferentiationInterface/src/init.jl

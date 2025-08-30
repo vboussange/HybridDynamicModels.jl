@@ -61,7 +61,7 @@ InferICs(b::Bool, u0_constraint::U0 = NoConstraint()) where {U0} = InferICs{b, U
 istrue(::InferICs{val, U0}) where {val, U0} = val
 
 """
-    train(backend::AbstractOptimBackend, model, dataloader::SegmentedTimeSeries, infer_ics::InferICs, rng=Random.default_rng(); luxtype=Lux.f64)
+    train(backend::AbstractOptimBackend, model, dataloader::SegmentedTimeSeries, infer_ics::InferICs, rng=Random.default_rng(); pstype=Lux.f64)
 
 Train a dynamical model using a segmentation training strategy data with optional initial condition inference.
 
@@ -80,6 +80,8 @@ A `NamedTuple` with different inputs depending on the backend used.
 
 ## Example
 ```julia
+using Lux # required
+
 # Setup
 backend = LuxBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
 dataloader = SegmentedTimeSeries(data, segmentsize=20, shift=5)

@@ -1,5 +1,6 @@
-import Turing: @model, NUTS, sample, Chains, arraydist, q_meanfield_gaussian, vi
-import DynamicPPL
+module HybridModellingTuringExt
+import Turing: NUTS, sample, Chains, arraydist, q_meanfield_gaussian, vi
+const DynamicPPL = Turing.DynamicPPL
 import DynamicPPL: @varname, VarName
 using Distributions
 import Lux
@@ -80,7 +81,7 @@ Lux.parameterlength(dist::Distributions.Distribution) = length(dist)
 Base.vec(dist::Product) = dist.v
 @leaf Distributions.Distribution
 
-function create_turing_model(ps_priors, data_distrib, st_model)
+function create_turing_model(ps_priors, data_distrib, st_model, pstype)
     function generated_model(model, varinfo, xs, ys)
         # Use a Ref to allow updating varinfo inside the fmap_with_path closure
         varinfo_ref = Ref(varinfo)
@@ -100,7 +101,7 @@ function create_turing_model(ps_priors, data_distrib, st_model)
 
         # Apply fmap_with_path to sample all parameters and maintain structure
         # convert to ComponentArray for compatibility with all SciMLSensitivity sensealg
-        ps = fmap_with_path(handle_node, ps_priors) |> ComponentArray
+        ps = fmap_with_path(handle_node, ps_priors) |> pstype
 
         # Update varinfo after sampling all parameters
         varinfo = varinfo_ref[]
@@ -175,7 +176,8 @@ function train(backend::MCMCBackend,
         model::AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         experimental_setup::InferICs,
-        rng = Random.default_rng())
+        rng = Random.default_rng();
+        pstype = Lux.f64)
 
     dataloader = tokenize(dataloader)
 
@@ -212,10 +214,12 @@ function train(backend::MCMCBackend,
     # TODO: separate ics from model; return ics as a vector of named tuples
     st_model = StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)
 
-    turing_fit = create_turing_model(priors, backend.datadistrib, st_model)
+    turing_fit = create_turing_model(priors, backend.datadistrib, st_model, pstype)
 
     chains = sample(
         rng, turing_fit(xs, ys), backend.sampler, backend.n_iterations; backend.kwargs...)
 
     return (; chains, st_model)
+end
+
 end
