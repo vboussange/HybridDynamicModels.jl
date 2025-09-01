@@ -77,8 +77,10 @@ struct SegmentedTimeSeries{D, I, R<:AbstractRNG} # When iterated, returns (data,
     rng::R
 end
 
-function SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+    isnothing(segmentsize) && (segmentsize = _nobs(data))
     @assert segmentsize > 1
+    @assert segmentsize <= _nobs(data) "Segment size must be less than or equal to the number of time steps."
     !isnothing(shift) && @assert shift > 0
     @assert batchsize > 0
 
