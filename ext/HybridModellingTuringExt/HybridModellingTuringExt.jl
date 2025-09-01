@@ -1,12 +1,9 @@
 module HybridModellingTuringExt
-import Turing: NUTS, sample, Chains, arraydist, q_meanfield_gaussian, vi
+import Turing: NUTS, sample, Chains, arraydist, q_meanfield_gaussian
 const DynamicPPL = Turing.DynamicPPL
 import DynamicPPL: @varname, VarName
 using Distributions
-import Lux
-import Lux: fmap
-import Functors: @leaf, fmap_with_path
-using ComponentArrays
+import Functors: @leaf, fmap_with_path, fmap
 using ConcreteStructs: @concrete
 import HybridModelling: SegmentedTimeSeries
 import Turing

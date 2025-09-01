@@ -1,11 +1,9 @@
 module HybridModelling
 
-import Lux
-import Lux: LuxCore, IntegerType, AbstractLuxLayer, AbstractLuxWrapperLayer, AbstractLuxContainerLayer, StatefulLuxLayer, get_state, set_state!
+using LuxCore
 using Random
 using ConcreteStructs: @concrete
-using OrdinaryDiffEq
-import Optimisers
+using DiffEqBase
 using DispatchDoctor: @stable
 
 export apply
@@ -17,7 +15,19 @@ export BayesianLayer, getpriors
 export LogMSELoss
 
 export train, InferICs
-export LuxBackend, MCMCBackend, VIBackend
+
+# This must be changed, with
+ext = Base.get_extension(@__MODULE__, :HybridModellingTuringExt)
+if !isnothing(ext)
+    export ext: MCMCBackend
+    export ext: VIBackend
+end
+
+ext = Base.get_extension(@__MODULE__, :HybridModellingLuxExt)
+if !isnothing(ext)
+    export ext: LuxBackend
+end
+# export LuxBackend, MCMCBackend, VIBackend
 
 include("data.jl")
 include("constraints.jl")
@@ -31,9 +41,6 @@ include("layers/models/odemodel.jl")
 include("layers/models/analyticmodel.jl")
 include("layers/models/armodel.jl")
 
-include("train/generics.jl")
-include("train/lux_trainer.jl")
-include("train/mcmc_trainer.jl")
-include("train/vi_trainer.jl")
+include("train.jl")
 
 end

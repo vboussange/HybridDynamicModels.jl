@@ -3,7 +3,7 @@ using ComponentArrays
 using ConcreteStructs: @concrete
 import HybridModelling: SegmentedTimeSeries
 import Turing: @model, arraydist, q_meanfield_gaussian, vi
-import Lux
+import LuxCore
 
 """
     VIBackend <: AbstractOptimBackend
@@ -57,7 +57,7 @@ function train(::VIBackend,
     ode_model_with_ics = Chain(initial_conditions = ics, model = model)
     priors = (initial_conditions = u0_priors, model = model_priors)
 
-    ps_init, st = Lux.setup(rng, ode_model_with_ics)
+    ps_init, st = LuxCore.setup(rng, ode_model_with_ics)
     st_model = StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)
 
     turing_fit = create_turing_model(priors, datadistrib, st_model)

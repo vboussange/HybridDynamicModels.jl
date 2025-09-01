@@ -1,11 +1,11 @@
 module HybridModellingLuxExt
 
-using Turing
-using Optimisers
+import Lux
+const Optimisers = Lux.Optimisers
+import Lux: Training
 using ADTypes
 using ConcreteStructs: @concrete
 import HybridModelling: SegmentedTimeSeries
-import Lux: Training
 
 """
     LuxBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
