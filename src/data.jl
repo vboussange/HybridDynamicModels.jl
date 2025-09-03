@@ -1,5 +1,6 @@
 # Adapted from Flux.jl `DataLoader` and MLUtils.jl `DataLoader`
 using Random: AbstractRNG, shuffle!, GLOBAL_RNG
+using Functors: @functor
 """
     SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
 
@@ -76,6 +77,8 @@ struct SegmentedTimeSeries{D, I, R<:AbstractRNG} # When iterated, returns (data,
     imax::Int
     rng::R
 end
+
+@functor SegmentedTimeSeries (data,)
 
 function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
     isnothing(segmentsize) && (segmentsize = _nobs(data))
