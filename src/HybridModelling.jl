@@ -10,7 +10,7 @@ using DispatchDoctor: @stable
 
 export apply
 export SegmentedTimeSeries, tokenize, tokens
-export Constraint, NoConstraint
+export NoConstraint, BoxConstraint, NamedTupleConstraint
 export ParameterLayer
 export InitialConditions, ODEModel
 export BayesianLayer, getpriors

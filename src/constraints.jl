@@ -1,7 +1,11 @@
 using LogExpFunctions
 
-using Bijectors
-import Bijectors: NamedTransform, transform, logabsdetjac
+# see https://github.com/TuringLang/Bijectors.jl/blob/00b08eaaae8f5133452e38c1ec949af453d8bbe6/src/Bijectors.jl#L87
+function _clamp(x, a, b)
+    T = promote_type(typeof(x), typeof(a), typeof(b))
+    clamped_x = ifelse(x < a, convert(T, a), ifelse(x > b, convert(T, b), x))
+    return clamped_x
+end
 
 struct NoConstraint <: AbstractLuxLayer end
 Lux.initialstates(::AbstractRNG, layer::NoConstraint) = (;)
@@ -25,7 +29,11 @@ function (::BoxConstraint)(x::AbstractArray, st)
     lb = st.lb
     ub = st.ub
     # elementwise transform: y = logit((x - lb) / (ub - lb))
-    return LogExpFunctions.logit.((x .- lb) ./ (ub .- lb)), st
+    return truncated_link.(_clamp.(x, lb, ub), lb, ub), st
+end
+
+function truncated_link(x, a, b)
+    return LogExpFunctions.logit((x - a) / (b - a))
 end
 
 """
@@ -38,8 +46,12 @@ function inverse(::BoxConstraint, y::AbstractArray, st)
     lb = st.lb
     ub = st.ub
     # elementwise inverse: x = lb + (ub - lb) * logistic(y)
-    x = lb .+ (ub .- lb) .* LogExpFunctions.logistic.(y)
+    x = _clamp.(truncated_invlink.(y, lb, ub), lb, ub)
     return x, st
+end
+
+function truncated_invlink(y, a, b)
+    return a + (b - a) * LogExpFunctions.logistic(y)
 end
 
 

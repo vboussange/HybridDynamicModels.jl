@@ -26,6 +26,7 @@ Initial condition layer.
 @concrete struct InitialConditions <: Lux.AbstractLuxWrapperLayer{:ics}
     ics
 end
+# TODO: you probably want to ensure that ics returns a NamedTuple with field u0
 
 function InitialConditions(ics::AbstractVector{<:AbstractLuxLayer})
     n_ics = length(ics)
@@ -44,13 +45,11 @@ function (lics::InitialConditions)(x::AbstractVector{<:NamedTuple}, ps, st)
     return [sols...], new_st
 end
 
-(lics::InitialConditions{<:AbstractLuxLayer})(ps, st) = begin 
-    @assert hasproperty(ps, :u0) "Parameter must have field `u0`."
+function (lics::InitialConditions{<:AbstractLuxLayer})(ps, st) 
     return lics.ics((), ps, st)
 end
 
 function (lics::InitialConditions{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
-    @assert hasproperty(x, :u0) "Input `x` must have field `u0`."
     new_u0, new_st_u0 = lics.ics(x.u0, ps, st)
     new_x = merge(x, (;u0 = new_u0)) # merging initial conditions with other fields to carry
     return new_x, new_st_u0

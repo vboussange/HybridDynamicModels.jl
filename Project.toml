@@ -1,7 +1,7 @@
 name = "HybridModelling"
 uuid = "7e133797-8c8e-49d9-acf3-b153daa40e06"
 authors = ["Victor Boussange <vic.boussange@gmail.com> and contributors"]
-version = "1.0.0-DEV"
+version = "0.0.2-DEV"
 
 [deps]
 Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"

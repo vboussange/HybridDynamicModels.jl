@@ -13,11 +13,19 @@ using Random
     x, _ = constraint(y, st)
     @test all(x .== [0.5])
 
-    constraint = HybridModelling.BoxConstraint(0., 1.)
+    constraint = BoxConstraint(0., 1.)
     _, st = LuxCore.setup(Random.default_rng(), constraint)
     y, _ = HybridModelling.inverse(constraint, [0.5], st)
     x, _ = constraint(y, st)
     @test all(isapprox.(x, [0.5]))
+
+    constraint = BoxConstraint([0., 0.5, 1.], [1., 1.5, 2.])
+    _, st = LuxCore.setup(Random.default_rng(), constraint)
+    x = [0.5, 1., 1.5]
+    y, _ = HybridModelling.inverse(constraint, x, st)
+    @test !all(isapprox.(x, y))
+    x_recovered, _ = constraint(y, st)
+    @test all(isapprox.(x, x_recovered))
 
     # Scalar bounds
     constraint = HybridModelling.NamedTupleConstraint((
