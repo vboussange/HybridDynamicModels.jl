@@ -4,9 +4,9 @@ using Lux
 using Random
 using Test
 using DifferentiationInterface
-import ForwardDiff, Zygote, Enzyme
+import ForwardDiff, Zygote
 using SciMLSensitivity
-using OrdinaryDiffEq
+using OrdinaryDiffEqTsit5
 using ComponentArrays
 
 ######## Initial Conditions tests ########

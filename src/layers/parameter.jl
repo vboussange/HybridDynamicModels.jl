@@ -1,3 +1,4 @@
+import Functors: functor
 """
     ParameterLayer(;constraint::AbstractConstraint = NoConstraint(), 
                     init_value = (;), 
@@ -33,7 +34,7 @@ true
 ```
 """
 @concrete struct ParameterLayer <: AbstractLuxLayer 
-    constraint <: AbstractConstraint
+    constraint <: Constraint
     init_value <: Function
     init_state <: Function
 end
@@ -41,9 +42,11 @@ end
 function ParameterLayer(;constraint = NoConstraint(), init_value = (;), init_state_value = (;))
     isa(init_state_value, NamedTuple) || throw(ArgumentError("`init_state_value` must be a `NamedTuple`"))
     # isa(init_value, NamedTuple) || isa(init_value, AbstractArray) || throw(ArgumentError("`init_value` must be a `NamedTuple`"))
-    isa(constraint, AbstractConstraint) || throw(ArgumentError("`constraint` must be an `AbstractConstraint`"))
+    isa(constraint, Constraint) || throw(ArgumentError("`constraint` must be a `Constraint`"))
 
-    init_values_transformed = _to_optim_space(constraint, init_value)
+    _, st_constraint = Lux.setup(Random.default_rng(), constraint)
+    init_values_transformed, _ = inverse(constraint, init_value, st_constraint)
+    init_state_value = merge(init_state_value, (; constraint = st_constraint))
     return ParameterLayer(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state_value))
 end
 
@@ -52,7 +55,7 @@ end
 function (pl::ParameterLayer)(ps, st)
     # we transform ps to a named tuple, as this may become a feature
     # Note: this is probably very slow...
-    ps_tr = pl.constraint(NamedTuple(ps))
+    ps_tr, _ = pl.constraint(NamedTuple(ps), st.constraint)
     x = merge(ps_tr, st)
     return (x, st)
 end
