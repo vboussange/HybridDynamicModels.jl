@@ -117,7 +117,7 @@ function getpriors(l::BayesianLayer{L, D}) where {L, D<:Distributions.Distributi
 end
 
 getpriors(l::NamedTuple) = map(getpriors, l)
-getpriors(::AbstractRNG, AbstractLuxLayer) = NamedTuple()
+getpriors(::AbstractLuxLayer) = NamedTuple()
 
 function getpriors(l::AbstractLuxWrapperLayer{layer}) where {layer}
     return getpriors(getfield(l, layer))

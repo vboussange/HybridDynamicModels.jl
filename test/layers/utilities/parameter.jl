@@ -1,3 +1,11 @@
+using Bijectors, Distributions
+using HybridModelling: NamedTupleConstraint, NoConstraint, BoxConstraint
+using Lux
+using Random
+using Test
+using ComponentArrays
+using DifferentiationInterface
+using Zygote
 
 using Test
 using HybridModelling
@@ -13,15 +21,13 @@ using Distributions
                         init_value = (;u0 = ones(10)))
 
     ps, st = Lux.setup(Random.default_rng(), param)
-    kwargs, _ = Lux.apply(param, ps, st)
+    kwargs, _ = param(ps, st)
     @test all(kwargs.u0 .≈ ones(10))
 
     # test with a constraint
-    transform = Bijectors.NamedTransform((
-        a = bijector(Uniform(0., 3.0)),
-        b = identity)
+    constraint = NamedTupleConstraint((;
+        a = BoxConstraint(0., 3.0))
     )
-    constraint = Constraint(transform)
     param = ParameterLayer(; constraint, init_value = (;a = ones(3), b = randn(3)))
 
     ps, st = Lux.setup(Random.default_rng(), param)
@@ -36,14 +42,6 @@ using Distributions
     # @test all(kwargs.a .≈ 3.)
 
     # gradient
-    transform = Bijectors.NamedTransform((
-        a = bijector(Uniform(0., 3.0)),
-        b = identity)
-    )
-    constraint = Constraint(transform)
-    param = ParameterLayer(;constraint, init_value = (;a = ones(3), b = randn(3)))
-
-    ps, st = Lux.setup(Random.default_rng(), param)
     fun = ps -> sum(param(ps, st)[1].a)
     grad = value_and_gradient(fun, AutoZygote(), ps)[2]
     @test !isnothing(grad.a)

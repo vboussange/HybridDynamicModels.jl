@@ -60,6 +60,17 @@ using Random
     tsteps_batch = first(sts)
     @assert tsteps_batch[1] != tsteps[1:2]
 
+    # testing edge case, segmentsize > length(data)
+    @test_throws "Segment size must be less than or equal to the number of time steps." SegmentedTimeSeries(tsteps; segmentsize=200)
+
+    # testing segmentsize = _nobs(data)
+    @test length([i for i in SegmentedTimeSeries(tsteps)]) == 1
+
+    @test length([i for i in SegmentedTimeSeries(tsteps, batchsize=10)]) == 0
+
+    @test length([i for i in SegmentedTimeSeries(tsteps, batchsize=10, partial_batch=true)]) == 1
+
+
     # tokenization
     sts = SegmentedTimeSeries(tsteps; segmentsize=2, batchsize=2);
     tokenized_sts = tokenize(sts)

@@ -1,90 +1,96 @@
-abstract type AbstractConstraint end
-using Bijectors
-import Bijectors: NamedTransform, transform, logabsdetjac
+using LogExpFunctions
 
-"""
-    Constraint(transform)
-
-Defines a constraint for projected gradient descent.
-
-## Arguments
-
-  - `transform`: A function that maps parameters in the optimization space to the parameter space.
-    It should be invertible, i.e., `inverse(transform)(ps)` should map the
-    parameter space to the optimization space.
-
-## Inputs
-  - `x`: Parameters in the optimization space.
-
-## Outputs
-  - `y`: Parameters in the parameter space.
-"""
-@concrete struct Constraint <: AbstractConstraint
-    transform
+# see https://github.com/TuringLang/Bijectors.jl/blob/00b08eaaae8f5133452e38c1ec949af453d8bbe6/src/Bijectors.jl#L87
+function _clamp(x, a, b)
+    T = promote_type(typeof(x), typeof(a), typeof(b))
+    clamped_x = ifelse(x < a, convert(T, a), ifelse(x > b, convert(T, b), x))
+    return clamped_x
 end
 
-(constraint::Constraint)(x) = inverse(constraint.transform)(x)
-_to_optim_space(constraint::Constraint, x) = constraint.transform(x)
+struct NoConstraint <: AbstractLuxLayer end
+Lux.initialstates(::AbstractRNG, layer::NoConstraint) = (;)
+(n::NoConstraint)(x, st) = x, st
+inverse(::NoConstraint, y, st) = y, st
 
-const NoConstraint() = Constraint(identity)
 
-# Below is an attempt to support ComponentArray with NamedTransform; for now, it fails
-# fieldnames(T <: Type{<:ComponentVector}) = keys(getaxes(T)[1])
+@concrete struct BoxConstraint <: AbstractLuxLayer
+  init_state <: Function
+end
+Lux.initialstates(::AbstractRNG, layer::BoxConstraint) = layer.init_state()
+BoxConstraint(lb::AbstractArray, ub::AbstractArray) = BoxConstraint(() -> (;lb, ub))
 
-# @generated function transform(
-#     b::NamedTransform{names1}, x::T
-# ) where {names1, T}
-#     exprs = []
-#     for n in fieldnames(T)
-#         if n in names1
-#             # Use processed value
-#             push!(exprs, :($n = b.bs.$n(x.$n)))
-#         else
-#             # Use existing value
-#             push!(exprs, :($n = x.$n))
-#         end
-#     end
-#     return :($(exprs...),)
-# end
+"""
+    _to_optim_space(constraint::BoxConstraint, x::AbstractArray)
 
-# @generated function logabsdetjac(b::NamedTransform{names}, x) where {names}
-#     exprs = [:(logabsdetjac(b.bs.$n, x.$n)) for n in names]
-#     return :(+($(exprs...)))
-# end
+Maps x from parameter space [lower_bound, upper_bound] to optimization space (-Inf, Inf) using a scaled logit transform.
+Works elementwise for arrays or scalars.
+"""
+function (::BoxConstraint)(y::AbstractArray, st)
+    lb = st.lb
+    ub = st.ub
+    # elementwise inverse: x = lb + (ub - lb) * logistic(y)
+    x = _clamp.(truncated_invlink.(y, lb, ub), lb, ub)
+    return x, st
+end
 
-# Below is a custom implementation of a box constaint, but it is not as nice 
-# as the solution from Bijectors.jl, since Bijectors.jl works with named tuples of transforms
-# struct NoConstraint <: AbstractConstraint end
-# (n::NoConstraint)(x) = x
-# _to_param_space(n::NoConstraint, x) = x
+function truncated_invlink(y, a, b)
+    return a + (b - a) * LogExpFunctions.logistic(y)
+end
 
-# @concrete struct BoxConstraint
-#     lower_bound
-#     upper_bound
-# end
+"""
+    _to_param_space(constraint::BoxConstraint, y::AbstractArray)
 
-# """
-#     _to_optim_space(constraint::BoxConstraint, x::AbstractArray)
+Inverse of _to_optim_space: maps y from optimization space (-Inf, Inf) to parameter space [lower_bound, upper_bound].
+Works elementwise for arrays or scalars.
+"""
+function inverse(::BoxConstraint, x::AbstractArray, st)
+    lb = st.lb
+    ub = st.ub
+    # elementwise transform: y = logit((x - lb) / (ub - lb))
+    return truncated_link.(_clamp.(x, lb, ub), lb, ub), st
+end
 
-# Maps x from parameter space [lower_bound, upper_bound] to optimization space (-Inf, Inf) using a scaled logit transform.
-# Works elementwise for arrays or scalars.
-# """
-# function (constraint::BoxConstraint)(x::AbstractArray)
-#     lb = constraint.lower_bound
-#     ub = constraint.upper_bound
-#     # elementwise transform: y = logit((x - lb) / (ub - lb))
-#     return LogExpFunctions.logit.((x .- lb) ./ (ub .- lb))
-# end
 
-# """
-#     _to_param_space(constraint::BoxConstraint, y::AbstractArray)
+function truncated_link(x, a, b)
+    return LogExpFunctions.logit((x - a) / (b - a))
+end
 
-# Inverse of _to_optim_space: maps y from optimization space (-Inf, Inf) to parameter space [lower_bound, upper_bound].
-# Works elementwise for arrays or scalars.
-# """
-# function _to_param_space(constraint::BoxConstraint, y::AbstractArray)
-#     lb = constraint.lower_bound
-#     ub = constraint.upper_bound
-#     # elementwise inverse: x = lb + (ub - lb) * logistic(y)
-#     return lb .+ (ub .- lb) .* LogExpFunctions.logistic.(y)
-# end
+
+@concrete struct NamedTupleConstraint <: LuxCore.AbstractLuxWrapperLayer{:constraints}
+    constraints <: NamedTuple
+end
+(c::NamedTupleConstraint)(x, st) = applyconstraints(c.constraints, x, st)
+inverse(c::NamedTupleConstraint, y, st) = inverseapplyconstraints(c.constraints, y, st)
+
+@generated function inverseapplyconstraints(constraints::NamedTuple{fields}, x::NamedTuple, st::NamedTuple{fields}) where fields
+    N = length(fields)
+    x_symbols = [gensym() for _ in 1:N]
+    calls = [
+        :(
+            $(x_symbols[i]) = @inline inverse(
+                constraints.$(fields[i]), x.$(fields[i]), st.$(fields[i])
+            )[1]
+        ) for i in 1:N
+    ]
+    push!(calls, :(x_c = NamedTuple{$fields}((($(Tuple(x_symbols)...),)))))
+    push!(calls, :(x = merge(x, x_c)))
+    push!(calls, :(return x, st))
+    return Expr(:block, calls...)
+end
+
+@generated function applyconstraints(constraints::NamedTuple{fields}, x::NamedTuple, st::NamedTuple{fields}) where fields
+    N = length(fields)
+    x_symbols = [gensym() for _ in 1:N]
+    calls = [
+        :(
+            $(x_symbols[i]) = @inline constraints.$(fields[i])(x.$(fields[i]), st.$(fields[i])
+            )[1]
+        ) for i in 1:N
+    ]
+    push!(calls, :(x_c = NamedTuple{$fields}((($(Tuple(x_symbols)...),)))))
+    push!(calls, :(x = merge(x, x_c)))
+    push!(calls, :(return x, st))
+    return Expr(:block, calls...)
+end
+
+Constraint = Union{NoConstraint, BoxConstraint, NamedTupleConstraint}
