@@ -35,6 +35,13 @@ using ComponentArrays
     u0, _ = many_ics((u0 = 1,), ps, st)
     @test hasproperty(u0, :u0)
 
+    # Testing frozen ics
+    lics_frozen = Lux.Experimental.FrozenLayer(InitialConditions(initial_ics))
+    ps, st = Lux.setup(Random.default_rng(), lics_frozen)
+    u0, _ = lics_frozen((u0 = 1,), ps, st)
+    @test hasproperty(u0, :u0)
+    @test isempty(ps)
+
     # testing Neural net
     initial_ics = Dense(1, 10)
     lics = InitialConditions(initial_ics)

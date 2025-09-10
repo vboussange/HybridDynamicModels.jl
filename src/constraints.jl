@@ -17,7 +17,7 @@ inverse(::NoConstraint, y, st) = y, st
   init_state <: Function
 end
 Lux.initialstates(::AbstractRNG, layer::BoxConstraint) = layer.init_state()
-BoxConstraint(lb, ub) = BoxConstraint(() -> (;lb, ub))
+BoxConstraint(lb::AbstractArray, ub::AbstractArray) = BoxConstraint(() -> (;lb, ub))
 
 """
     _to_optim_space(constraint::BoxConstraint, x::AbstractArray)
@@ -25,24 +25,7 @@ BoxConstraint(lb, ub) = BoxConstraint(() -> (;lb, ub))
 Maps x from parameter space [lower_bound, upper_bound] to optimization space (-Inf, Inf) using a scaled logit transform.
 Works elementwise for arrays or scalars.
 """
-function (::BoxConstraint)(x::AbstractArray, st)
-    lb = st.lb
-    ub = st.ub
-    # elementwise transform: y = logit((x - lb) / (ub - lb))
-    return truncated_link.(_clamp.(x, lb, ub), lb, ub), st
-end
-
-function truncated_link(x, a, b)
-    return LogExpFunctions.logit((x - a) / (b - a))
-end
-
-"""
-    _to_param_space(constraint::BoxConstraint, y::AbstractArray)
-
-Inverse of _to_optim_space: maps y from optimization space (-Inf, Inf) to parameter space [lower_bound, upper_bound].
-Works elementwise for arrays or scalars.
-"""
-function inverse(::BoxConstraint, y::AbstractArray, st)
+function (::BoxConstraint)(y::AbstractArray, st)
     lb = st.lb
     ub = st.ub
     # elementwise inverse: x = lb + (ub - lb) * logistic(y)
@@ -52,6 +35,24 @@ end
 
 function truncated_invlink(y, a, b)
     return a + (b - a) * LogExpFunctions.logistic(y)
+end
+
+"""
+    _to_param_space(constraint::BoxConstraint, y::AbstractArray)
+
+Inverse of _to_optim_space: maps y from optimization space (-Inf, Inf) to parameter space [lower_bound, upper_bound].
+Works elementwise for arrays or scalars.
+"""
+function inverse(::BoxConstraint, x::AbstractArray, st)
+    lb = st.lb
+    ub = st.ub
+    # elementwise transform: y = logit((x - lb) / (ub - lb))
+    return truncated_link.(_clamp.(x, lb, ub), lb, ub), st
+end
+
+
+function truncated_link(x, a, b)
+    return LogExpFunctions.logit((x - a) / (b - a))
 end
 
 
