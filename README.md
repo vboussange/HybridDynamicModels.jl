@@ -21,7 +21,7 @@
 - **`AnalyticModel`**: For explicit dynamical models
 
 ### **Utility layers for hybrid modelling**
-- **`ParameterLayer`**: Learnable parameters with optional constraints
+- **`ParameterLayer`**: Learnable parameters, composable with optional `Constraint` layers
 - **`BayesianLayer`**: Add probabilistic priors to any Lux layer
 
 ### **Data loaders**
