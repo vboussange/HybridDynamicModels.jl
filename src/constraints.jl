@@ -19,12 +19,6 @@ end
 Lux.initialstates(::AbstractRNG, layer::BoxConstraint) = layer.init_state()
 BoxConstraint(lb::AbstractArray, ub::AbstractArray) = BoxConstraint(() -> (;lb, ub))
 
-"""
-    _to_optim_space(constraint::BoxConstraint, x::AbstractArray)
-
-Maps x from parameter space [lower_bound, upper_bound] to optimization space (-Inf, Inf) using a scaled logit transform.
-Works elementwise for arrays or scalars.
-"""
 function (::BoxConstraint)(y::AbstractArray, st)
     lb = st.lb
     ub = st.ub
@@ -37,19 +31,12 @@ function truncated_invlink(y, a, b)
     return a + (b - a) * LogExpFunctions.logistic(y)
 end
 
-"""
-    _to_param_space(constraint::BoxConstraint, y::AbstractArray)
-
-Inverse of _to_optim_space: maps y from optimization space (-Inf, Inf) to parameter space [lower_bound, upper_bound].
-Works elementwise for arrays or scalars.
-"""
 function inverse(::BoxConstraint, x::AbstractArray, st)
     lb = st.lb
     ub = st.ub
     # elementwise transform: y = logit((x - lb) / (ub - lb))
     return truncated_link.(_clamp.(x, lb, ub), lb, ub), st
 end
-
 
 function truncated_link(x, a, b)
     return LogExpFunctions.logit((x - a) / (b - a))
@@ -93,4 +80,99 @@ end
     return Expr(:block, calls...)
 end
 
+"""
+    Constraint
+
+Abstract type representing parameter constraints in HybridModelling.jl.
+
+Constraints are used to enforce physical or mathematical bounds on parameters during optimization.
+They work by transforming unconstrained parameters to constrained parameter spaces and vice versa.
+
+# Available Constraint Types
+
+## NoConstraint
+The simplest constraint that applies no transformation. Parameters remain unconstrained.
+
+```julia
+constraint = NoConstraint()
+```
+
+## BoxConstraint
+Constrains parameters to lie within specified lower and upper bounds using a sigmoid transformation.
+
+```julia
+# Constrain parameters to [0, 1]
+constraint = BoxConstraint([0.0, 0.0], [1.0, 1.0])
+
+# Constrain to different bounds for each parameter
+constraint = BoxConstraint([0.0, -1.0], [10.0, 1.0])
+```
+
+## NamedTupleConstraint
+Applies different constraints to different fields of a NamedTuple.
+
+```julia
+constraints = (
+    decay_rate = BoxConstraint([0.0], [1.0]),  # Between 0 and 1
+    amplitude = NoConstraint()                  # Unconstrained
+)
+constraint = NamedTupleConstraint(constraints)
+```
+
+# Usage in ParameterLayer
+
+Constraints are primarily used with `ParameterLayer` to ensure parameters stay within valid ranges:
+
+```julia
+# Parameter with positivity constraint
+param = ParameterLayer(
+    constraint = BoxConstraint([0.0], [Inf]),
+    init_value = (;rate = [0.1])
+)
+```
+
+# Mathematical Details
+
+Constraints work by transforming between constrained and unconstrained spaces:
+
+- **Forward transformation**: `constrained = constraint(unconstrained)`
+- **Inverse transformation**: `unconstrained = inverse(constraint, constrained)`
+
+The inverse transformation is used during optimization to work in an unconstrained space,
+while the forward transformation produces the final constrained parameters.
+
+# Examples
+
+## Basic usage with bounds
+```julia
+using HybridModelling
+
+# Create a parameter that must be positive
+param = ParameterLayer(
+    constraint = BoxConstraint([0.0], [Inf]),
+    init_value = (;growth_rate = 0.05)
+)
+
+ps, st = Lux.setup(Random.default_rng(), param)
+constrained_value, _ = param(ps, st)
+# constrained_value.growth_rate will be >= 0
+```
+
+## Multiple constraints
+```julia
+# Parameters with different constraints
+constraints = (
+    concentration = BoxConstraint([0.0], [1.0]),    # 0 to 1
+    temperature = BoxConstraint([273.0], [373.0]),  # 0°C to 100°C
+    pressure = NoConstraint()                        # Unconstrained
+)
+
+param = ParameterLayer(
+    constraint = NamedTupleConstraint(constraints),
+    init_value = (;concentration = 0.5, temperature = 298.0, pressure = 1.0)
+)
+```
+
+See also: `ParameterLayer`, `NoConstraint`, `BoxConstraint`, `NamedTupleConstraint`
+"""
 Constraint = Union{NoConstraint, BoxConstraint, NamedTupleConstraint}

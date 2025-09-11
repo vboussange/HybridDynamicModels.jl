@@ -12,7 +12,7 @@ export NoConstraint, BoxConstraint, NamedTupleConstraint
 export ParameterLayer
 export InitialConditions, ODEModel, AnalyticModel, ARModel
 export BayesianLayer, getpriors
-export LogMSELoss
+export LogMSELoss, PoissonLoss
 
 export train, InferICs
 

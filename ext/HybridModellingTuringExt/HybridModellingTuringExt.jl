@@ -38,7 +38,7 @@ backend = MCMCBackend(NUTS(0.65), 1000, Normal)
 backend = MCMCBackend(NUTS(0.65), 2000, x -> LogNormal(log(x), 0.1))
 
 # Train with MCMC
-result = train(backend, bayesian_model, dataloader, experimental_setup)
+result = train(backend, bayesian_model, dataloader, infer_ics)
 chains = result.chains
 ```
 """
@@ -78,7 +78,7 @@ Lux.parameterlength(dist::Distributions.Distribution) = length(dist)
 Base.vec(dist::Product) = dist.v
 @leaf Distributions.Distribution
 
-function create_turing_model(ps_priors, data_distrib, st_model, pstype)
+function create_turing_model(ps_priors, data_distrib, st_model)
     function generated_model(model, varinfo, xs, ys)
         # Use a Ref to allow updating varinfo inside the fmap_with_path closure
         varinfo_ref = Ref(varinfo)
@@ -98,11 +98,10 @@ function create_turing_model(ps_priors, data_distrib, st_model, pstype)
 
         # Apply fmap_with_path to sample all parameters and maintain structure
         # convert to ComponentArray for compatibility with all SciMLSensitivity sensealg
-        ps = fmap_with_path(handle_node, ps_priors) |> pstype
+        ps = fmap_with_path(handle_node, ps_priors) |> ComponentArray
 
         # Update varinfo after sampling all parameters
         varinfo = varinfo_ref[]
-
         # Observe data points
         for i in eachindex(xs)
             preds = st_model(xs[i], ps)
@@ -120,7 +119,7 @@ end
 
 
 """
-    train(backend::MCMCBackend, model, dataloader, experimental_setup, rng=Random.default_rng())
+    train(backend::MCMCBackend, model, dataloader, infer_ics, rng=Random.default_rng())
 
 Perform Bayesian inference on a hybrid dynamical model using MCMC sampling.
 
@@ -128,7 +127,7 @@ Perform Bayesian inference on a hybrid dynamical model using MCMC sampling.
 - `backend::MCMCBackend`: MCMC configuration and sampling settings
 - `model::AbstractLuxLayer`: Bayesian dynamical model with priors (use `BayesianLayer` wrappers)
 - `dataloader::SegmentedTimeSeries`: Time series data split into segments
-- `experimental_setup::InferICs`: Configuration for initial condition inference
+- `infer_ics::InferICs`: Configuration for initial condition inference
 - `rng=Random.default_rng()`: Random number generator for sampling
 
 ## Returns
@@ -139,7 +138,7 @@ A NamedTuple with:
 ## Behavior
 The function:
 1. **Tokenizes** the dataloader and extracts segment data
-2. **Creates Bayesian initial conditions** based on `experimental_setup`
+2. **Creates Bayesian initial conditions** based on `infer_ics`
 3. **Constructs a Turing model** from the Lux model and priors
 4. **Runs MCMC sampling** to approximate the posterior distribution
 5. **Returns chains** for posterior analysis and uncertainty quantification
@@ -172,51 +171,58 @@ posterior_samples = sample(result.st_model, chains, 100)
 function train(backend::MCMCBackend,
         model::AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
-        experimental_setup::InferICs,
-        rng = Random.default_rng();
-        pstype = Lux.f64)
+        infer_ics::InferICs,
+        rng = Random.default_rng())
 
     dataloader = tokenize(dataloader)
 
     xs = []
     ys = []
-    ic_list = BayesianLayer[]
+    ic_list = []
 
     for tok in tokens(dataloader)
         segment_data, segment_tsteps = dataloader[tok]
         u0 = segment_data[:, 1]
-        t0 = segment_tsteps[1]
         push!(xs,
             (; u0 = tok, saveat = segment_tsteps,
                 tspan = (segment_tsteps[1], segment_tsteps[end])))
         push!(ys, segment_data)
-        if isa(experimental_setup, InferICs{true})
-            push!(ic_list,
-                BayesianLayer(
-                    ParameterLayer(init_value = (; u0), init_state_value = (; t0)),
-                    (; u0 = arraydist(backend.datadistrib.(u0)))))
-        elseif isa(experimental_setup, InferICs{false})
-            push!(
-                ic_list, BayesianLayer(ParameterLayer(init_state_value = (; t0, u0)),
-                    (;)))
-        end
+        push!(ic_list, ParameterLayer(init_value = (; u0)))
     end
-    ics = InitialConditions(ic_list)
+    if istrue(infer_ics)
+        bics = []
+        for ic in ic_list
+            ps, st = Lux.setup(rng, ic)
+            u0, _ = ic(ps, st)
+            push!(bics, BayesianLayer(ic, (;u0 = arraydist(backend.datadistrib.(u0.u0)))))
+        end
+        ics = InitialConditions(vcat(bics...))
+    else
+        # Both work:
+        # ics = InitialConditions(Lux.Experimental.FrozenLayer.(ic_list))
+        ics = Lux.Experimental.FrozenLayer(InitialConditions(vcat(ic_list...)))
+    end
 
     ode_model_with_ics = Chain(initial_conditions = ics, model = model)
     priors = getpriors(ode_model_with_ics)
 
     ps_init, st = Lux.setup(rng, ode_model_with_ics)
-
-    # TODO: separate ics from model; return ics as a vector of named tuples
     st_model = StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)
 
-    turing_fit = create_turing_model(priors, backend.datadistrib, st_model, pstype)
+    turing_fit = create_turing_model(priors, backend.datadistrib, st_model)
 
     chains = sample(
         rng, turing_fit(xs, ys), backend.sampler, backend.n_iterations; backend.kwargs...)
+    segment_ics = []
+    for i in tokens(dataloader)
+        _, segment_tsteps = dataloader[i]
+        t0 = segment_tsteps[1]
+        push!(segment_ics, (; t0))
+    end
+    segment_ics = vcat(segment_ics...)
 
-    return (; chains, st_model)
+
+    return (; chains, st_model, ics=segment_ics)
 end
 
 end
