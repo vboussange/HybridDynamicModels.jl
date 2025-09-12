@@ -9,7 +9,7 @@ using OrdinaryDiffEq
 using SciMLSensitivity
 using UnPack
 
-@testset "LuxBackend Tests" begin
+@testset "SGDBackend Tests" begin
     # Setup test data - simple logistic growth model
     function generate_test_data(; n_segments=3, segment_length=20, noise_level=0.05)
         # True parameters
@@ -38,9 +38,9 @@ using UnPack
         return data_noisy, tsteps, p_true, u0_true
     end
     
-    @testset "LuxBackend Construction" begin
+    @testset "SGDBackend Construction" begin
         # Test basic construction
-        backend = LuxBackend(Adam(1e-3), 100, AutoZygote(), MSELoss())
+        backend = SGDBackend(Adam(1e-3), 100, AutoZygote(), MSELoss())
         @test backend.opt isa Adam
         @test backend.n_epochs == 100
         @test backend.adtype isa AutoZygote
@@ -49,13 +49,13 @@ using UnPack
         
         # Test with custom options
         custom_callback = (l, m, p, s) -> (loss=l,)
-        backend2 = LuxBackend(Adam(1e-2), 50, AutoForwardDiff(), MSELoss(); 
+        backend2 = SGDBackend(Adam(1e-2), 50, AutoForwardDiff(), MSELoss(); 
                              verbose_frequency=5, callback=custom_callback)
         @test backend2.verbose_frequency == 5
         @test backend2.callback === custom_callback
     end
     
-    @testset "LuxBackend Training - Fixed ICs" begin
+    @testset "SGDBackend Training - Fixed ICs" begin
         # Generate test data
         data, tsteps, p_true, u0_true = generate_test_data()
         
@@ -79,7 +79,7 @@ using UnPack
                            sensealg = ForwardDiffSensitivity())
         
         # Setup training
-        backend = LuxBackend(Adam(1e-2), 10, AutoZygote(), MSELoss(); verbose_frequency=5)
+        backend = SGDBackend(Adam(1e-2), 10, AutoZygote(), MSELoss(); verbose_frequency=5)
         infer_ics = InferICs(false)  # Use fixed initial conditions
         
         # Train model
@@ -101,7 +101,7 @@ using UnPack
         @test size(prediction, 2) == 10  # Time points
     end
     
-    @testset "LuxBackend Training - Learned ICs" begin
+    @testset "SGDBackend Training - Learned ICs" begin
         # Generate test data
         data, tsteps, p_true, u0_true = generate_test_data()
         
@@ -125,7 +125,7 @@ using UnPack
                            sensealg = ForwardDiffSensitivity())
         
         # Setup training with learnable initial conditions
-        backend = LuxBackend(Adam(1e-2), 15, AutoZygote(), MSELoss(); verbose_frequency=10)
+        backend = SGDBackend(Adam(1e-2), 15, AutoZygote(), MSELoss(); verbose_frequency=10)
         infer_ics = InferICs(true, NoConstraint())  # Learn initial conditions
         
         # Train model
@@ -144,7 +144,7 @@ using UnPack
         @test size(prediction, 3) == length(test_input)  # Batch dimension
     end
     
-    @testset "LuxBackend Training - Custom Callback" begin
+    @testset "SGDBackend Training - Custom Callback" begin
         # Generate minimal test data
         data, tsteps, _, _ = generate_test_data()
         dataloader = SegmentedTimeSeries(data; segmentsize=10, shift=5, batchsize=1)
@@ -165,7 +165,7 @@ using UnPack
             return (loss = loss, param_norm = norm(vec(params)))
         end
         
-        backend = LuxBackend(Adam(1e-2), 5, AutoZygote(), MSELoss(); 
+        backend = SGDBackend(Adam(1e-2), 5, AutoZygote(), MSELoss(); 
                            verbose_frequency=2, callback=custom_callback)
         infer_ics = InferICs(false)
         

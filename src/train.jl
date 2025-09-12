@@ -83,7 +83,7 @@ A `NamedTuple` with different inputs depending on the backend used.
 using Lux # required
 
 # Setup
-backend = LuxBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
+backend = SGDBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
 dataloader = SegmentedTimeSeries(data, segmentsize=20, shift=5)
 infer_ics = InferICs(true, NoConstraint())
 

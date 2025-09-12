@@ -91,12 +91,12 @@ using Distributions
         @test AbstractOptimBackend <: Any
         
         # Test that our backends are subtypes
-        @test LuxBackend <: AbstractOptimBackend
+        @test SGDBackend <: AbstractOptimBackend
         @test MCMCBackend <: AbstractOptimBackend
         @test VIBackend <: AbstractOptimBackend
         
         # Test that we can create instances
-        lux_backend = LuxBackend(Adam(1e-3), 100, AutoZygote(), MSELoss())
+        lux_backend = SGDBackend(Adam(1e-3), 100, AutoZygote(), MSELoss())
         mcmc_backend = MCMCBackend(NUTS(0.65), 100, Normal)
         vi_backend = VIBackend()
         
@@ -108,7 +108,7 @@ using Distributions
     @testset "Train Function Interface" begin
         # Test that train function exists with correct methods
         @test hasmethod(train, (AbstractOptimBackend, Any, SegmentedTimeSeries, InferICs))
-        @test hasmethod(train, (LuxBackend, AbstractLuxLayer, SegmentedTimeSeries, InferICs, AbstractRNG))
+        @test hasmethod(train, (SGDBackend, AbstractLuxLayer, SegmentedTimeSeries, InferICs, AbstractRNG))
         @test hasmethod(train, (MCMCBackend, AbstractLuxLayer, SegmentedTimeSeries, InferICs, AbstractRNG))
         @test hasmethod(train, (VIBackend, AbstractLuxLayer, SegmentedTimeSeries, InferICs))
         

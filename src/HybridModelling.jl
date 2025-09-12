@@ -25,9 +25,9 @@ end
 
 ext = Base.get_extension(@__MODULE__, :HybridModellingLuxExt)
 if !isnothing(ext)
-    export ext: LuxBackend
+    export ext: SGDBackend
 end
-# export LuxBackend, MCMCBackend, VIBackend
+# export SGDBackend, MCMCBackend, VIBackend
 
 include("data.jl")
 include("constraints.jl")

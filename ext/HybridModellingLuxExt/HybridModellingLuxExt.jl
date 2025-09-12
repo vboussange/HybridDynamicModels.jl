@@ -14,7 +14,7 @@ function _default_callback(l, epoch, ts)
 end
 
 """
-    LuxBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
+    SGDBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
 
 Training backend relying on Lux.jl training API. Use for mode estimation.
 
@@ -40,11 +40,11 @@ When provided to `train`, the function returns a named tuple with the following 
 
 ## Example
 ```julia
-backend = LuxBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
+backend = SGDBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
 result = train(backend, model, dataloader, infer_ics)
 ```
 """
-@concrete struct LuxBackend <: AbstractOptimBackend
+@concrete struct SGDBackend <: AbstractOptimBackend
     opt::Optimisers.AbstractRule
     n_epochs::Int
     adtype::ADTypes.AbstractADType
@@ -52,7 +52,7 @@ result = train(backend, model, dataloader, infer_ics)
     callback::Any
 end
 
-LuxBackend(opt, n_epochs, adtype, loss_fn) = LuxBackend(opt, n_epochs, adtype, loss_fn, _default_callback)
+SGDBackend(opt, n_epochs, adtype, loss_fn) = SGDBackend(opt, n_epochs, adtype, loss_fn, _default_callback)
 
 function _feature_wrapper((token, tsteps_batch))
     return [(; u0 = token[i],
@@ -73,7 +73,7 @@ function _get_ics(dataloader, infer_ics::InferICs)
     return InitialConditions(ics_list)
 end
 
-function train(backend::LuxBackend,
+function train(backend::SGDBackend,
         model::AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         infer_ics::InferICs,

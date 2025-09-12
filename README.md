@@ -28,7 +28,7 @@
 - **`SegmentedTimeSeries`**: Time series data loader with segmentation, implementing mini-batching.
 
 ### **Training API, with following backends** 
-- **`LuxBackend`**: Fast gradient-based optimization with automatic differentiation
+- **`SGDBackend`**: Fast gradient-based optimization with automatic differentiation
 - **`MCMCBackend`**: Full Bayesian inference with uncertainty quantification  
 - **`VIBackend`**: Variational inference for scalable approximate Bayesian methods
 
@@ -78,7 +78,7 @@ data = rand(2, 100)  # Your time series data
 dataloader = SegmentedTimeSeries(data; segmentsize=20, shift=10)
 
 # Configure training
-backend = LuxBackend(
+backend = SGDBackend(
     Adam(1e-3),           # Optimizer
     1000,                 # Number of epochs  
     AutoZygote(),         # AD backend
