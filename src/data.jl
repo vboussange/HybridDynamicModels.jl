@@ -262,7 +262,6 @@ function create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
     kwargs_sync = merge(NamedTuple(kwargs), (partial_segment = false, partial_batch = false))
     
     # Create training loader
-    @show segmentsize, shift, datasize
     dataloader_train = SegmentedTimeSeries(data; segmentsize, shift, kwargs_sync...)
     
     # Create validation data by slicing from position segmentsize + 1 onwards
