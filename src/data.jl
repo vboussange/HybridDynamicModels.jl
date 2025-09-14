@@ -82,7 +82,7 @@ end
 
 function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
     isnothing(segmentsize) && (segmentsize = _nobs(data))
-    @assert segmentsize > 1
+    @assert segmentsize > 0
     @assert segmentsize <= _nobs(data) "Segment size must be less than or equal to the number of time steps."
     !isnothing(shift) && @assert shift > 0
     @assert batchsize > 0
@@ -188,4 +188,78 @@ function Base.getindex(sdl::SegmentedTimeSeries, token)
     # seg[2] is the segment indices
     segment_data = _get_ts_obs(sdl.data, [seg[2]])
     return Tuple(dropdims(x, dims=ndims(x)) for x in segment_data)
+end
+
+"""
+    create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
+
+Create separate training and validation SegmentedTimeSeries loaders from a dataset.
+
+This function splits the data into non-overlapping training and validation segments.
+The training data uses segments with gaps equal to `valid_length` to leave space
+for validation segments. The validation data starts after the first training segment
+and uses segments of length `valid_length`.
+
+# Arguments
+- `data`: Input data (can be an array, tuple, or named tuple)
+- `segmentsize`: Size of training segments
+- `valid_length`: Size of validation segments
+- `kwargs...`: Additional arguments passed to SegmentedTimeSeries constructors
+
+# Returns
+- `dataloader_train`: SegmentedTimeSeries for training data
+- `dataloader_valid`: SegmentedTimeSeries for validation data
+
+# Examples
+
+## With array data
+```julia
+data = rand(10, 100)  # 10 features, 100 time steps
+train_loader, val_loader = create_train_val_loaders(data; 
+    segmentsize=20, valid_length=5, batchsize=4)
+```
+
+## With tuple data (data, time steps)
+```julia
+data = rand(10, 100)
+tsteps = 1:100
+train_loader, val_loader = create_train_val_loaders((data, tsteps); 
+    segmentsize=20, valid_length=5, batchsize=4)
+```
+
+## With named tuple data
+```julia
+dataset = (observations = rand(10, 100), times = 1:100, metadata = rand(5, 100))
+train_loader, val_loader = create_train_val_loaders(dataset; 
+    segmentsize=20, valid_length=5)
+```
+
+# Notes
+- Training segments are spaced `segmentsize + valid_length` apart to avoid overlap with validation
+- Validation segments start at position `segmentsize + 1` to avoid overlap with first training segment
+- Both loaders have `partial_segment = false` to ensure consistent segment sizes
+"""
+function create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
+    # Create training loader with gaps for validation segments
+    dataloader_train = SegmentedTimeSeries(data; segmentsize,
+        shift = segmentsize + valid_length, partial_segment = false, kwargs...)
+    
+    # Create validation data by slicing from position segmentsize + 1 onwards
+    validation_data = _slice_data_from_index(data, segmentsize + 1)
+    
+    # Create validation loader
+    dataloader_valid = SegmentedTimeSeries(validation_data;
+        segmentsize = valid_length,
+        shift = segmentsize + valid_length, partial_segment = false, kwargs...)
+    
+    return dataloader_train, dataloader_valid
+end
+
+# Helper function to slice data generically from a given index
+function _slice_data_from_index(data::AbstractArray, start_idx::Int)
+    return data[ntuple(i -> Colon(), Val(ndims(data) - 1))..., start_idx:end]
+end
+
+function _slice_data_from_index(data::Union{Tuple, NamedTuple}, start_idx::Int)
+    return map(x -> _slice_data_from_index(x, start_idx), data)
 end
