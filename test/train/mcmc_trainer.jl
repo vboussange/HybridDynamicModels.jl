@@ -61,7 +61,7 @@ using UnPack
         data, tsteps, p_true, u0_true = generate_bayesian_test_data()
         
         # Create dataloader with fewer segments for faster testing
-        dataloader = SegmentedTimeSeries(data; segmentsize=15, shift=10, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segmentlength=15, shift=10, batchsize=1)
         
         # Create Bayesian model
         param_priors = (b = Product([Uniform(0.1, 1.0), Uniform(0.1, 1.0)]),)
@@ -115,7 +115,7 @@ using UnPack
         data, tsteps, p_true, u0_true = generate_bayesian_test_data()
         
         # Create smaller dataloader for faster testing
-        dataloader = SegmentedTimeSeries(data; segmentsize=12, shift=8, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segmentlength=12, shift=8, batchsize=1)
         
         # Create Bayesian model with parameter priors only
         param_priors = (b = Product([Uniform(0.2, 0.8), Uniform(0.2, 0.8)]),)

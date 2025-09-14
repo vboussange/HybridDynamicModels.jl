@@ -2,18 +2,18 @@
 using Random: AbstractRNG, shuffle!, GLOBAL_RNG
 using Functors: @functor
 """
-    SegmentedTimeSeries(data; segmentsize=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+    SegmentedTimeSeries(data; segmentlength=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
 
 An object that iterates over mini-batches of segments of `data`,
-each segment containing `segmentsize` data points, each mini-batch containing `batchsize` segments
+each segment containing `segmentlength` data points, each mini-batch containing `batchsize` segments
 (except possibly the last one). The last dimension in each tensor is the time dimension, i.e. the one segmented.
 
 # Arguments
-- `segmentsize`: Number of time points in each segment.
-- `shift`: Step size between the start of consecutive segments. If `shift < segmentsize`, segments will overlap; if `shift > segmentsize`, there will be gaps. By default, `shift = segmentsize` (no overlap).
+- `segmentlength`: Number of time points in each segment.
+- `shift`: Step size between the start of consecutive segments. If `shift < segmentlength`, segments will overlap; if `shift > segmentlength`, there will be gaps. By default, `shift = segmentlength` (no overlap).
 - `batchsize`: Number of segments per batch.
 - `shuffle`: Shuffle the order of segments before batching.
-- `partial_segment`: Allow the last segment to be shorter than `segmentsize` if not enough data remains.
+- `partial_segment`: Allow the last segment to be shorter than `segmentlength` if not enough data remains.
 - `partial_batch`: Allow the last batch to contain fewer than `batchsize` segments if not enough segments remain.
 - `rng`: Random number generator for shuffling.
 
@@ -22,7 +22,7 @@ each segment containing `segmentsize` data points, each mini-batch containing `b
 ## Basic usage with array
 ```jldoctest
 julia> Xtrain = rand(10, 100)
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=2, batchsize=1)
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=2, batchsize=1)
 julia> for batch in sdl
            println("Batch: ", summary(batch))
        end
@@ -31,7 +31,7 @@ julia> for batch in sdl
 ## With time steps and tuple input
 ```jldoctest
 julia> tsteps = 1:100
-julia> sdl = SegmentedTimeSeries((Xtrain, tsteps); segmentsize=2, batchsize=1)
+julia> sdl = SegmentedTimeSeries((Xtrain, tsteps); segmentlength=2, batchsize=1)
 julia> for (data, tseg) in sdl
            println("Data: ", summary(data))
            println("Time segment: ", tseg)
@@ -40,7 +40,7 @@ julia> for (data, tseg) in sdl
 
 ## Custom shift and batch size
 ```jldoctest
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=3, shift=1, batchsize=2)
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=3, shift=1, batchsize=2)
 julia> for batch in sdl
            println("Batch: ", batch)
        end
@@ -48,7 +48,7 @@ julia> for batch in sdl
 
 ## Partial segments and batches
 ```jldoctest
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=3, batchsize=2, partial_segment=true, partial_batch=true)
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=3, batchsize=2, partial_segment=true, partial_batch=true)
 julia> for batch in sdl
            println("Batch: ", batch)
        end
@@ -58,7 +58,7 @@ julia> for batch in sdl
 ```jldoctest
 julia> using Random
 julia> rng = Random.MersenneTwister(42)
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentsize=2, batchsize=1, shuffle=true, rng=rng)
+julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=2, batchsize=1, shuffle=true, rng=rng)
 julia> for batch in sdl
            println("Shuffled batch: ", batch)
        end
@@ -66,7 +66,7 @@ julia> for batch in sdl
 """
 struct SegmentedTimeSeries{D, I, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
     data::D
-    segmentsize::Int
+    segmentlength::Int
     shift::Int
     batchsize::Int
     nsegments::Int
@@ -80,14 +80,14 @@ end
 
 @functor SegmentedTimeSeries (data,)
 
-function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
-    isnothing(segmentsize) && (segmentsize = _nobs(data))
-    @assert segmentsize > 1
-    @assert segmentsize <= _nobs(data) "Segment size must be less than or equal to the number of time steps."
+function SegmentedTimeSeries(data; segmentlength=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+    isnothing(segmentlength) && (segmentlength = _nobs(data))
+    @assert segmentlength > 1
+    @assert segmentlength <= _nobs(data) "Segment size must be less than or equal to the number of time steps."
     !isnothing(shift) && @assert shift > 0
     @assert batchsize > 0
 
-    isnothing(shift) && (shift = segmentsize-1)
+    isnothing(shift) && (shift = segmentlength-1)
     datasize = _nobs(data)
 
     # Compute indices for each segment
@@ -95,7 +95,7 @@ function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize
     m = 0
     while true
         start_idx = m * shift + 1
-        end_idx = start_idx + segmentsize - 1
+        end_idx = start_idx + segmentlength - 1
         if end_idx > datasize
             if partial_segment && start_idx <= datasize
                 push!(indices, start_idx:datasize)
@@ -112,7 +112,7 @@ function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize
     imax = partial_batch ? nsegments : nsegments - batchsize + 1
     imax = max(imax, 0)
 
-    return SegmentedTimeSeries(data, segmentsize, shift, batchsize, nsegments, shuffle, partial_segment, partial_batch, indices, imax, rng)
+    return SegmentedTimeSeries(data, segmentlength, shift, batchsize, nsegments, shuffle, partial_segment, partial_batch, indices, imax, rng)
 end
 
 # Standard iteration over SegmentedTimeSeries
@@ -166,7 +166,7 @@ Base.eltype(::SegmentedTimeSeries{D}) where D = Array{eltype(D), ndims(D) + 1}
 
 function tokenize(sdl::SegmentedTimeSeries)
     return SegmentedTimeSeries(sdl.data, 
-                            sdl.segmentsize, 
+                            sdl.segmentlength, 
                             sdl.shift, 
                             sdl.batchsize, 
                             sdl.nsegments, 

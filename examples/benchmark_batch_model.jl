@@ -36,7 +36,7 @@ ps = ComponentArray(ps)
 synthetic_data, _ = lux_true_model((; u0 = u0_true), ps, st)
 
 dataloader = tokenize(SegmentedTimeSeries((synthetic_data, tsteps); 
-                                segmentsize = 4, 
+                                segmentlength = 4, 
                                 partial_batch = true,
                                 batchsize = typemax(Int64)))
 
