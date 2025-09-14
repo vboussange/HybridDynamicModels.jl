@@ -1,4 +1,4 @@
-using HybridModelling
+using HybridDynamicModelling
 using Lux
 using Test
 using Random
@@ -190,8 +190,8 @@ using UnPack
         ps, st = Lux.setup(rng, model)
         train_state = Lux.Training.TrainState(model, ps, st, Adam())
         
-        extracted_ps = HybridModelling.get_parameter_values(train_state)
-        extracted_st = HybridModelling.get_state_values(train_state)
+        extracted_ps = HybridDynamicModelling.get_parameter_values(train_state)
+        extracted_st = HybridDynamicModelling.get_state_values(train_state)
         
         @test extracted_ps === train_state.parameters
         @test extracted_st === train_state.states

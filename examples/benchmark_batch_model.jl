@@ -1,5 +1,5 @@
 using HybridModellingExperiments
-using HybridModelling
+using HybridDynamicModelling
 using Lux
 using SciMLSensitivity
 import OrdinaryDiffEqTsit5: Tsit5

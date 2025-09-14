@@ -6,7 +6,7 @@ using OrdinaryDiffEq
 using Bijectors
 import Lux
 using Lux: MSELoss, Chain, Training
-using HybridModelling
+using HybridDynamicModelling
 using SciMLSensitivity
 using UnPack
 using Plots

@@ -1,4 +1,4 @@
-using HybridModelling
+using HybridDynamicModelling
 using Test
 using Random
 

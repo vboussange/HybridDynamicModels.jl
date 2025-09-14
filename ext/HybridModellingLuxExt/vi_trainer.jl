@@ -1,7 +1,7 @@
 
 using ComponentArrays
 using ConcreteStructs: @concrete
-import HybridModelling: SegmentedTimeSeries
+import HybridDynamicModelling: SegmentedTimeSeries
 import Turing: @model, arraydist, q_meanfield_gaussian, vi
 import LuxCore
 

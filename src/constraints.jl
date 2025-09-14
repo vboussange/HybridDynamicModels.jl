@@ -83,7 +83,7 @@ end
 """
     Constraint
 
-Abstract type representing parameter constraints in HybridModelling.jl.
+Abstract type representing parameter constraints in HybridDynamicModelling.jl.
 
 Constraints are used to enforce physical or mathematical bounds on parameters during optimization.
 They work by transforming unconstrained parameters to constrained parameter spaces and vice versa.
@@ -145,7 +145,7 @@ while the forward transformation produces the final constrained parameters.
 
 ## Basic usage with bounds
 ```julia
-using HybridModelling
+using HybridDynamicModelling
 
 # Create a parameter that must be positive
 param = ParameterLayer(

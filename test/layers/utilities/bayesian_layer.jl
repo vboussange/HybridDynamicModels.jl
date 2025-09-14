@@ -1,5 +1,5 @@
 using Bijectors, Distributions
-using HybridModelling
+using HybridDynamicModelling
 using Lux
 using Test
 using Random
