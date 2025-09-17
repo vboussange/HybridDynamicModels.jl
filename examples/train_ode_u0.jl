@@ -75,7 +75,7 @@ ode_model = ODEModel((;params = params),
                     reltol = 1e-3,
                     sensealg = ForwardDiffSensitivity()
                     )
-ics = InitialConditions(ic_list)
+ics = ICLayer(ic_list)
 
 function feature_wrapper((token, tsteps_batch))
     return [

@@ -15,7 +15,7 @@
 ## 🚀 Key Features
 
 ### **Dynamical model layers**
-- **`InitialConditions`**: For initial condition inference
+- **`ICLayer`**: For initial condition inference
 - **`ODEModel`**: Neural ODEs
 - **`ARModel`**: Autoregressive models
 - **`AnalyticModel`**: For explicit dynamical models
@@ -29,7 +29,7 @@
 
 ### **Training API, with following backends** 
 - **`SGDBackend`**: Fast gradient-based optimization with automatic differentiation
-- **`MCMCBackend`**: Full Bayesian inference with uncertainty quantification  
+- **`MCSamplingBackend`**: Full Bayesian inference with uncertainty quantification  
 - **`VIBackend`**: Variational inference for scalable approximate Bayesian methods
 
 ## 📦 Installation
@@ -110,7 +110,7 @@ bayesian_model = ODEModel(
 )
 
 # MCMC training for uncertainty quantification
-mcmc_backend = MCMCBackend(
+mcmc_backend = MCSamplingBackend(
     NUTS(0.65),          # MCMC sampler
     1000,                # Number of samples
     LogNormal            # Data likelihood

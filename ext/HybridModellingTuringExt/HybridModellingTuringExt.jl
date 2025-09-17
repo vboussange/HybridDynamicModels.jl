@@ -11,7 +11,7 @@ import Turing
 
 
 """
-    MCMCBackend <: AbstractOptimBackend
+    MCSamplingBackend <: AbstractOptimBackend
 
 Training backend for Bayesian inference of Lux.jl models using Markov Chain Monte Carlo (MCMC). Requires models with Bayesian priors (use `BayesianLayer` wrappers)
 
@@ -32,17 +32,17 @@ Training backend for Bayesian inference of Lux.jl models using Markov Chain Mont
 ## Example
 ```julia
 # Gaussian data likelihood
-backend = MCMCBackend(NUTS(0.65), 1000, Normal)
+backend = MCSamplingBackend(NUTS(0.65), 1000, Normal)
 
 # Log-normal data for positive-valued observations
-backend = MCMCBackend(NUTS(0.65), 2000, x -> LogNormal(log(x), 0.1))
+backend = MCSamplingBackend(NUTS(0.65), 2000, x -> LogNormal(log(x), 0.1))
 
 # Train with MCMC
 result = train(backend, bayesian_model, dataloader, infer_ics)
 chains = result.chains
 ```
 """
-@concrete struct MCMCBackend <: AbstractOptimBackend
+@concrete struct MCSamplingBackend <: AbstractOptimBackend
     sampler::Any
     n_iterations::Int
     datadistrib::Any
@@ -50,16 +50,16 @@ chains = result.chains
 end
 
 """
-    MCMCBackend(sampler, n_iterations, datadistrib; kwargs...)
+    MCSamplingBackend(sampler, n_iterations, datadistrib; kwargs...)
 
-Construct an MCMCBackend for Bayesian training of Lux.jl models.
-See [`MCMCBackend`](@ref) for detailed documentation.
+Construct an MCSamplingBackend for Bayesian training of Lux.jl models.
+See [`MCSamplingBackend`](@ref) for detailed documentation.
 """
-function MCMCBackend(sampler,
+function MCSamplingBackend(sampler,
         n_iterations,
         datadistrib,
         ; kwargs...)
-    return MCMCBackend(sampler, n_iterations, datadistrib, kwargs)
+    return MCSamplingBackend(sampler, n_iterations, datadistrib, kwargs)
 end
 
 function _vector_to_parameters(ps_new::AbstractVector, ps::NamedTuple)
@@ -119,12 +119,12 @@ end
 
 
 """
-    train(backend::MCMCBackend, model, dataloader, infer_ics, rng=Random.default_rng())
+    train(backend::MCSamplingBackend, model, dataloader, infer_ics, rng=Random.default_rng())
 
 Perform Bayesian inference on a hybrid dynamical model using MCMC sampling.
 
 ## Arguments
-- `backend::MCMCBackend`: MCMC configuration and sampling settings
+- `backend::MCSamplingBackend`: MCMC configuration and sampling settings
 - `model::AbstractLuxLayer`: Bayesian dynamical model with priors (use `BayesianLayer` wrappers)
 - `dataloader::SegmentedTimeSeries`: Time series data split into segments
 - `infer_ics::InferICs`: Configuration for initial condition inference
@@ -151,7 +151,7 @@ The function:
 ```julia
 # Setup Bayesian model with priors
 bayesian_model = BayesianLayer(ode_model, parameter_priors)
-backend = MCMCBackend(NUTS(0.65), 1000, LogNormal)
+backend = MCSamplingBackend(NUTS(0.65), 1000, LogNormal)
 infer_ics = InferICs(true)
 
 # Bayesian training
@@ -168,7 +168,7 @@ posterior_samples = sample(result.st_model, chains, 100)
 - Use `sample(st_model, chains, n)` to generate posterior predictive samples
 - Choose appropriate `datadistrib` based on your data characteristics
 """
-function train(backend::MCMCBackend,
+function train(backend::MCSamplingBackend,
         model::AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         infer_ics::InferICs,
@@ -196,11 +196,11 @@ function train(backend::MCMCBackend,
             u0, _ = ic(ps, st)
             push!(bics, BayesianLayer(ic, (;u0 = arraydist(backend.datadistrib.(u0.u0)))))
         end
-        ics = InitialConditions(vcat(bics...))
+        ics = ICLayer(vcat(bics...))
     else
         # Both work:
-        # ics = InitialConditions(Lux.Experimental.FrozenLayer.(ic_list))
-        ics = Lux.Experimental.FrozenLayer(InitialConditions(vcat(ic_list...)))
+        # ics = ICLayer(Lux.Experimental.FrozenLayer.(ic_list))
+        ics = Lux.Experimental.FrozenLayer(ICLayer(vcat(ic_list...)))
     end
 
     ode_model_with_ics = Chain(initial_conditions = ics, model = model)

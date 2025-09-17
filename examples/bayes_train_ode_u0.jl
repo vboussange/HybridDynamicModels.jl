@@ -94,7 +94,7 @@ for tok in tokens(dataloader)
     push!(ys, segment_data)
     push!(ic_list, ParameterLayer(constraint = NoConstraint(), init_value = (;u0)))
 end
-ics = InitialConditions(ic_list)
+ics = ICLayer(ic_list)
 
 function dudt(layers, u, ps, t)
     p = layers.params(ps.params)

@@ -51,7 +51,7 @@ function train(::VIBackend,
             push!(u0_priors, (;))
         end
     end
-    ics = InitialConditions(ic_list)
+    ics = ICLayer(ic_list)
     u0_priors = NamedTuple{ntuple(i -> Symbol(:u0_, i), length(ic_list))}(u0_priors)
 
     ode_model_with_ics = Chain(initial_conditions = ics, model = model)

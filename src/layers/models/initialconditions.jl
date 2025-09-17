@@ -1,7 +1,7 @@
 """
-    InitialConditions(ics::AbstractLuxLayer)
-    InitialConditions(ics::<:ParameterLayer)
-    InitialConditions(ics::Vector{<:ParameterLayer})
+    ICLayer(ics::AbstractLuxLayer)
+    ICLayer(ics::<:ParameterLayer)
+    ICLayer(ics::Vector{<:ParameterLayer})
 
 Initial condition layer.
 
@@ -23,18 +23,18 @@ Initial condition layer.
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct InitialConditions <: Lux.AbstractLuxWrapperLayer{:ics}
+@concrete struct ICLayer <: Lux.AbstractLuxWrapperLayer{:ics}
     ics
 end
 
-function InitialConditions(ics::AbstractVector{<:AbstractLuxLayer})
+function ICLayer(ics::AbstractVector{<:AbstractLuxLayer})
     n_ics = length(ics)
     nt_ics = NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}(ics)
-    InitialConditions(nt_ics)
+    ICLayer(nt_ics)
 end
 
 # batch mode
-function (lics::InitialConditions)(x::AbstractVector{<:NamedTuple}, ps, st)
+function (lics::ICLayer)(x::AbstractVector{<:NamedTuple}, ps, st)
     function step(acc, xi)
         sols, curr_st = acc
         sol, new_st = lics(xi, ps, curr_st)
@@ -44,12 +44,12 @@ function (lics::InitialConditions)(x::AbstractVector{<:NamedTuple}, ps, st)
     return [sols...], new_st
 end
 
-(lics::InitialConditions{<:AbstractLuxLayer})(ps, st) = begin 
+(lics::ICLayer{<:AbstractLuxLayer})(ps, st) = begin 
     @assert hasproperty(ps, :u0) "Parameter must have field `u0`."
     return lics.ics((), ps, st)
 end
 
-function (lics::InitialConditions{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
+function (lics::ICLayer{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
     @assert hasproperty(x, :u0) "Input `x` must have field `u0`."
     new_u0, new_st_u0 = lics.ics(x.u0, ps, st)
     new_x = merge(x, (;u0 = new_u0)) # merging initial conditions with other fields to carry
@@ -57,17 +57,17 @@ function (lics::InitialConditions{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
 end
 
 
-# function Lux.initialstates(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:ParameterLayer}})
+# function Lux.initialstates(rng::AbstractRNG, ics::ICLayer{<:AbstractVector{<:ParameterLayer}})
 #     n_ics = length(ics.ics)
 #     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([Lux.initialstates(rng, _u0) for _u0 in ics.ics])
 # end
 
-# function Lux.initialparameters(rng::AbstractRNG, ics::InitialConditions{<:AbstractVector{<:ParameterLayer}})
+# function Lux.initialparameters(rng::AbstractRNG, ics::ICLayer{<:AbstractVector{<:ParameterLayer}})
 #     n_ics = length(ics.ics)
 #     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([Lux.initialparameters(rng, _u0) for _u0 in ics.ics])
 # end
 
-function (lics::InitialConditions{<:NamedTuple{fields}})(x::NamedTuple, ps, st) where fields
+function (lics::ICLayer{<:NamedTuple{fields}})(x::NamedTuple, ps, st) where fields
     @assert hasproperty(x, :u0) && isa(x.u0, Int) "Input `x` must have field `u0` of type Int to index initial conditions."
     k = fields[x.u0]
     _ics = getfield(lics.ics, k)

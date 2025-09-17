@@ -6,7 +6,7 @@ import Lux: LuxCore, AbstractLuxContainerLayer
     BayesianLayer(layer, priors)
 
 Wrapper layer that adds Bayesian priors to any Lux layer for probabilistic modeling and MCMC inference. Behaves identically to the wrapped layer, but compatible with `getpriors()` to extract prior distributions for MCMC sampling
-Required for probabilistic inference with `MCMCBackend`. Prior structure should match the parameter structure of the wrapped layer. Use `arraydist()` for array-valued parameters to ensure proper dimensionality
+Required for probabilistic inference with `MCSamplingBackend`. Prior structure should match the parameter structure of the wrapped layer. Use `arraydist()` for array-valued parameters to ensure proper dimensionality
 ## Arguments
 - `layer`: Any Lux layer to be given Bayesian treatment
 - `priors`: Prior distributions, either:
@@ -95,7 +95,7 @@ all_priors = getpriors(model)
 # Returns: (encoder = ..., ode_model = ..., decoder = (;))
 
 # Use with MCMC training
-backend = MCMCBackend(NUTS(), 1000, LogNormal)
+backend = MCSamplingBackend(NUTS(), 1000, LogNormal)
 priors = getpriors(model)  # Automatically used by MCMC training
 ```
 """

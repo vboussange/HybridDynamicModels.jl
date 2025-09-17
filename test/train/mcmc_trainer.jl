@@ -9,7 +9,7 @@ using OrdinaryDiffEq
 using SciMLSensitivity
 using UnPack
 
-@testset "MCMCBackend Tests" begin
+@testset "MCSamplingBackend Tests" begin
     # Setup test data generation
     function generate_bayesian_test_data(; n_segments=2, segment_length=15, noise_level=0.1)
         # True parameters
@@ -38,25 +38,25 @@ using UnPack
         return data_noisy, tsteps, p_true, u0_true
     end
     
-    @testset "MCMCBackend Construction" begin
+    @testset "MCSamplingBackend Construction" begin
         # Test basic construction
-        backend = MCMCBackend(NUTS(0.65), 100, LogNormal)
+        backend = MCSamplingBackend(NUTS(0.65), 100, LogNormal)
         @test backend.sampler isa NUTS
         @test backend.n_iterations == 100
         @test backend.datadistrib === LogNormal
         @test backend.kwargs isa NamedTuple
         
         # Test with kwargs
-        backend2 = MCMCBackend(HMC(0.01, 5), 50, Normal; progress=false, chain_type=Chains)
+        backend2 = MCSamplingBackend(HMC(0.01, 5), 50, Normal; progress=false, chain_type=Chains)
         @test backend2.sampler isa HMC
         @test backend2.kwargs.progress == false
         @test backend2.kwargs.chain_type === Chains
         
         # Test nameof function
-        @test HybridDynamicModelling.nameof(backend) == "MCMCBackend"
+        @test HybridDynamicModelling.nameof(backend) == "MCSamplingBackend"
     end
     
-    @testset "MCMCBackend Training - Fixed ICs" begin
+    @testset "MCSamplingBackend Training - Fixed ICs" begin
         # Generate test data
         data, tsteps, p_true, u0_true = generate_bayesian_test_data()
         
@@ -87,7 +87,7 @@ using UnPack
         )
         
         # Setup MCMC training
-        backend = MCMCBackend(NUTS(0.65), 50, x -> LogNormal(log(x), 0.15); progress=false)
+        backend = MCSamplingBackend(NUTS(0.65), 50, x -> LogNormal(log(x), 0.15); progress=false)
         infer_ics = InferICs(false)  # Use fixed initial conditions
         
         # Train model
@@ -110,7 +110,7 @@ using UnPack
         @test all(s isa NamedTuple for s in posterior_samples)
     end
     
-    @testset "MCMCBackend Training - Learned ICs" begin
+    @testset "MCSamplingBackend Training - Learned ICs" begin
         # Generate simpler test data
         data, tsteps, p_true, u0_true = generate_bayesian_test_data()
         
@@ -138,7 +138,7 @@ using UnPack
                            sensealg = ForwardDiffSensitivity())
         
         # Setup MCMC training with learned ICs
-        backend = MCMCBackend(NUTS(0.65), 30, x -> LogNormal(log(x), 0.2); progress=false)
+        backend = MCSamplingBackend(NUTS(0.65), 30, x -> LogNormal(log(x), 0.2); progress=false)
         infer_ics = InferICs(true)  # Learn initial conditions
         
         # Train model

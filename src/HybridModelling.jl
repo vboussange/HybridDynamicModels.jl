@@ -10,7 +10,7 @@ export apply
 export SegmentedTimeSeries, tokenize, tokens
 export NoConstraint, BoxConstraint, NamedTupleConstraint
 export ParameterLayer
-export InitialConditions, ODEModel, AnalyticModel, ARModel
+export ICLayer, ODEModel, AnalyticModel, ARModel
 export BayesianLayer, getpriors
 export LogMSELoss, PoissonLoss
 
@@ -19,7 +19,7 @@ export train, InferICs
 # This must be changed, with
 ext = Base.get_extension(@__MODULE__, :HybridModellingTuringExt)
 if !isnothing(ext)
-    export ext: MCMCBackend
+    export ext: MCSamplingBackend
     export ext: VIBackend
 end
 
@@ -27,7 +27,7 @@ ext = Base.get_extension(@__MODULE__, :HybridModellingLuxExt)
 if !isnothing(ext)
     export ext: SGDBackend
 end
-# export SGDBackend, MCMCBackend, VIBackend
+# export SGDBackend, MCSamplingBackend, VIBackend
 
 include("data.jl")
 include("constraints.jl")

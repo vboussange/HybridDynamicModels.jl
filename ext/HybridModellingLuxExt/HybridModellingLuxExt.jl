@@ -70,7 +70,7 @@ function _get_ics(dataloader, infer_ics::InferICs)
                     init_value = (; u0))
     end
     ics_list = [ _fun(tok) for tok in tokens(dataloader)]
-    return InitialConditions(ics_list)
+    return ICLayer(ics_list)
 end
 
 function train(backend::SGDBackend,
