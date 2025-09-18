@@ -46,14 +46,15 @@ Pkg.add("HybridDynamicModelling")
 ```julia
 using HybridDynamicModelling
 using Lux, OrdinaryDiffEq, Optimisers
-using ComponentArrays, Random
 
 # Define hybrid model layers
-neural_layer = Dense(2, 2, tanh)
-param_layer = ParameterLayer(init_value = (growth_rate = [0.1, 0.2],))
+neural_layer = Chain(Dense(2, 2, tanh), Dense(2, 2))
+
+param_constraint = BoxConstraint([1e-2], [1e0])
+param_layer = ParameterLayer(init_value = (growth_rate = [0.1, 0.2]), constraint = param_constraint)
 
 # Hybrid dynamics combining neural network and domain knowledge
-function hybrid_dynamics(layers, u, ps, t)
+function dudt(layers, u, ps, t)
     # Domain-specific term
     domain_params = layers.params(ps.params)
     growth_term = domain_params.growth_rate .* u
@@ -67,7 +68,7 @@ end
 # Create the ODE model
 model = ODEModel(
     (neural = neural_layer, params = param_layer),
-    hybrid_dynamics,
+    dudt,
     alg = Tsit5(),
     abstol = 1e-6,
     reltol = 1e-6
@@ -75,7 +76,7 @@ model = ODEModel(
 
 # Setup training data
 data = rand(2, 100)  # Your time series data
-dataloader = SegmentedTimeSeries(data; segmentlength=20, shift=10)
+dataloader = SegmentedTimeSeries(data; segmentsize=20, shift=10)
 
 # Configure training
 backend = SGDBackend(
@@ -99,13 +100,13 @@ prediction = trained_model((u0 = [1.0, 0.5], tspan = (0.0, 10.0), saveat = 0:0.1
 using Distributions, Turing
 
 # Add Bayesian priors to parameters
-param_priors = (growth_rate = Product([Normal(0.1, 0.05), Normal(0.2, 0.05)]),)
+param_priors = (growth_rate = product_distribution([Normal(0.1, 0.05), Normal(0.2, 0.05)]),)
 bayesian_params = BayesianLayer(param_layer, param_priors)
 
 # Create Bayesian model
 bayesian_model = ODEModel(
     (neural = neural_layer, params = bayesian_params),
-    hybrid_dynamics,
+    dudt,
     alg = Tsit5()
 )
 
@@ -128,9 +129,8 @@ posterior_samples = sample(result.st_model, chains, 100)
 
 ```julia
 # Configure learnable initial conditions with constraints
-using Bijectors
-constraint = Constraint(bijector(Uniform(0.0, 5.0)))  # Positive initial conditions
-infer_ics = InferICs(true, constraint)
+constraint_u0 = BoxConstraint([1e-3], [5e0])  # Positive initial conditions
+infer_ics = InferICs(true, constraint_u0)
 
 # Train with learned initial conditions
 result = train(backend, model, dataloader, infer_ics)
@@ -144,11 +144,11 @@ end
 
 ## 📚 Documentation
 ### Examples
-
-- **[Scientific Models](examples/)**: Population dynamics, chemical kinetics, epidemiology
+TO COMPLETE
+<!-- - **[Scientific Models](examples/)**: Population dynamics, chemical kinetics, epidemiology
 - **[Neural ODEs](examples/neural_ode.jl)**: Pure and hybrid neural differential equations
 - **[Bayesian Inference](examples/bayesian.jl)**: Uncertainty quantification workflows
-- **[Parameter Estimation](examples/parameter_estimation.jl)**: Learning physical parameters
+- **[Parameter Estimation](examples/parameter_estimation.jl)**: Learning physical parameters -->
 
 ### API
 Checkout the API documentation.
@@ -168,10 +168,5 @@ Built on the excellent LuxDL, SciML and TuringLang ecosystem, particularly:
 
 
 ## ⏭️ Roadmap
-- [ ] Handle multivariate distribution in Turing backend
-- [ ] Revise tests
-- [ ] Implement conditional loading of Lux, Turing and OrdinaryDiffEq
 - [ ] Implement ARModel
 - [ ] Implement AnalyticModel
-- [ ] Handle initial conditions in training backend
-- [ ] https://github.com/JuliaDiff/DifferentiationInterface.jl/blob/main/DifferentiationInterface/src/init.jl
