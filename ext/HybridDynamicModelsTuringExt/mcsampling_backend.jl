@@ -161,7 +161,7 @@ posterior_samples = sample(result.st_model, chains, 100)
 function train(backend::MCSamplingBackend,
         model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
-        infer_ics::InferICs,
+        infer_ics::AbstractSetup,
         rng = Random.default_rng())
 
     dataloader = tokenize(dataloader)
@@ -179,7 +179,7 @@ function train(backend::MCSamplingBackend,
         push!(ys, segment_data)
         push!(ic_list, ParameterLayer(init_value = (; u0)))
     end
-    if istrue(infer_ics)
+    if is_ics_estimated(experimental_setup)
         bics = []
         for ic in ic_list
             ps, st = LuxCore.setup(rng, ic)

@@ -1,4 +1,5 @@
 abstract type AbstractOptimBackend end
+abstract type AbstractSetup end
 
 """
     InferICs(infer::Bool, u0_constraint=NoConstraint())
@@ -52,13 +53,14 @@ end
   concentrations ≥ 0)
 
 """
-struct InferICs{T, U0}
+struct InferICs{T, U0} <: AbstractSetup
     u0_constraint::U0
 end
 
 InferICs(b::Bool, u0_constraint::U0 = NoConstraint()) where {U0} = InferICs{b, U0}(u0_constraint)
 
-istrue(::InferICs{val, U0}) where {val, U0} = val
+is_ics_estimated(::InferICs{val, U0}) where {val, U0} = val
+get_u0_constraint(infer_ics::InferICs) = infer_ics.u0_constraint
 
 """
     train(backend::AbstractOptimBackend, model, dataloader::SegmentedTimeSeries, infer_ics::InferICs, rng=Random.default_rng(); pstype=Lux.f64)

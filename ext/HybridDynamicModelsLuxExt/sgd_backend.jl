@@ -54,35 +54,45 @@ function _feature_wrapper((token, tsteps_batch))
             for i in eachindex(token)]
 end
 
-function _get_ics(dataloader, infer_ics::InferICs)
+function _get_ic_layer(dataloader, experimental_setup)
     function _fun(tok)
         segment_data, _ = dataloader[tok]
         u0 = segment_data[:, 1]
-        ParameterLayer(;constraint = infer_ics.u0_constraint,
-                    init_value = (; u0))
+        return ParameterLayer(; constraint = get_u0_constraint(experimental_setup),
+            init_value = (; u0))
     end
-    ics_list = [ _fun(tok) for tok in tokens(dataloader)]
-    return ICLayer(ics_list)
+    ics_list = [_fun(tok) for tok in tokens(dataloader)]
+    return InitialConditions(ics_list)
 end
 
+function _get_ic_values(dataloader, ic_layer, ps, st)
+    segment_ics = []
+    for i in tokens(dataloader)
+        _, segment_tsteps = dataloader[i]
+        t0 = segment_tsteps[1]
+        push!(segment_ics, merge(ic_layer((; u0 = i), ps, st)[1], (; t0)))
+    end
+    segment_ics = vcat(segment_ics...)
+    return segment_ics
+end
 function train(backend::SGDBackend,
         model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
-        infer_ics::InferICs,
+        infer_ics::AbstractSetup,
         rng = Random.default_rng(),
         luxtype = Lux.f64)
 
     dataloader = luxtype(dataloader)
     dataloader = tokenize(dataloader)
 
-    ics = _get_ics(dataloader, infer_ics)
+    ics_layer = _get_ic_layer(dataloader, infer_ics)
 
-    if !istrue(infer_ics)
-        ics = Lux.Experimental.FrozenLayer(ics)
+    if !is_ics_estimated(experimental_setup)
+        ics_layer = Lux.Experimental.FrozenLayer(ics_layer)
     end
 
     ode_model_with_ics = Chain(wrapper = Lux.WrappedFunction(_feature_wrapper),
-        initial_conditions = ics, model = model)
+        initial_conditions = ics_layer, model = model)
 
     ps, st = luxtype(Lux.setup(rng, ode_model_with_ics))
     ps = ComponentArray(ps) # We transforms ps to support all sensealg from SciMLSensitivity
@@ -92,29 +102,24 @@ function train(backend::SGDBackend,
     best_st = st
     best_loss = luxtype(Inf)
     for epoch in 1:(backend.n_epochs)
-        tot_loss = luxtype(0.0) 
+        train_loss = luxtype(0.0)
         for (batched_tokens, (batched_segments, batched_tsteps)) in dataloader
             _, loss, _, train_state = Training.single_train_step!(
                 backend.adtype,
                 backend.loss_fn,
                 ((batched_tokens, batched_tsteps), batched_segments),
                 train_state)
-            tot_loss += loss
+            train_loss += loss
         end
-        if tot_loss < best_loss
+        if train_loss < best_loss
             best_ps = get_parameter_values(train_state)
             best_st = get_state_values(train_state)
-            best_loss = tot_loss
+            best_loss = train_loss
         end
-        backend.callback(tot_loss, epoch, train_state)
+        backend.callback(train_loss, epoch, train_state)
     end
-    segment_ics = []
-    for i in tokens(dataloader)
-        _, segment_tsteps = dataloader[i]
-        t0 = segment_tsteps[1]
-        push!(segment_ics, merge(ics((; u0 = i), best_ps.initial_conditions, best_st.initial_conditions)[1], (; t0)))
-    end
-    segment_ics = vcat(segment_ics...)
+
+    segment_ics = _get_ic_values(dataloader, ics_layer, best_ps, best_st)
 
     return (; ps = best_ps.model, st = best_st.model, ics = segment_ics)
 end
