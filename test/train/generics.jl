@@ -1,6 +1,5 @@
 using HybridDynamicModels
 using Test
-using Bijectors
 using Distributions
 
 @testset "Training Generics Tests" begin

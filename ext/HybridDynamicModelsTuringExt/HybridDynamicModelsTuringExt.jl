@@ -6,7 +6,7 @@ import DynamicPPL: @varname, VarName
 using Distributions
 import Functors: @leaf, fmap_with_path, fmap
 using ConcreteStructs: @concrete
-import HybridDynamicModels: SegmentedTimeSeries, AbstractOptimBackend, InferICs
+import HybridDynamicModels: SegmentedTimeSeries, AbstractOptimBackend, InferICs, AbstractSetup
 import Lux # for ForzenLayer
 
 include("bayesian_layer.jl")

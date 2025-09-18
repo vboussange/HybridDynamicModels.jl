@@ -1,7 +1,7 @@
 using Test
 using HybridDynamicModels
 import LuxCore
-using Distributions, Bijectors
+using Distributions
 using Random
 
 
