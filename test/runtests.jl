@@ -1,8 +1,14 @@
-# using HybridDynamicModels
+using HybridDynamicModels
 using Test
+using Random
+using StableRNGs
+using DifferentiationInterface
+using Zygote
+
 
 @testset "HybridDynamicModels.jl" begin
-    # Write your tests here.
+    include("qa.jl")
+    
     include("data.jl")
     include("constraints.jl")
     

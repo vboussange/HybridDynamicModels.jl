@@ -60,7 +60,7 @@ using UnPack
         data, tsteps, p_true, u0_true = generate_test_data()
         
         # Create dataloader
-        dataloader = SegmentedTimeSeries(data; segmentlength=20, shift=15, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segment_length=20, shift=15, batchsize=1)
         
         # Create model layers
         params = ParameterLayer(init_value = (b = [1.0, 1.0],))
@@ -106,7 +106,7 @@ using UnPack
         data, tsteps, p_true, u0_true = generate_test_data()
         
         # Create dataloader
-        dataloader = SegmentedTimeSeries(data; segmentlength=15, shift=10, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segment_length=15, shift=10, batchsize=1)
         
         # Create model layers
         params = ParameterLayer(init_value = (b = [1.0, 1.0],))
@@ -147,7 +147,7 @@ using UnPack
     @testset "SGDBackend Training - Custom Callback" begin
         # Generate minimal test data
         data, tsteps, _, _ = generate_test_data()
-        dataloader = SegmentedTimeSeries(data; segmentlength=10, shift=5, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segment_length=10, shift=5, batchsize=1)
         
         # Simple model
         params = ParameterLayer(init_value = (b = [1.0, 1.0],))

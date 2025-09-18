@@ -79,7 +79,7 @@ Plots.plot(tsteps, preds', label = "Predicted", color = 1)
 Plots.plot!(tsteps, data_with_noise', label = "Data", color = 2)
 
 dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
-                                segmentlength = 50)
+                                segment_length = 50)
 dataloader = tokenize(dataloader)
 
 xs = []

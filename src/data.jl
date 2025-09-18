@@ -2,18 +2,18 @@
 using Random: AbstractRNG, shuffle!, GLOBAL_RNG
 using Functors: @functor
 """
-    SegmentedTimeSeries(data; segmentlength=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+    SegmentedTimeSeries(data; segment_length=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
 
 An object that iterates over mini-batches of segments of `data`,
-each segment containing `segmentlength` data points, each mini-batch containing `batchsize` segments
+each segment containing `segment_length` data points, each mini-batch containing `batchsize` segments
 (except possibly the last one). The last dimension in each tensor is the time dimension, i.e. the one segmented.
 
 # Arguments
-- `segmentlength`: Number of time points in each segment.
-- `shift`: Step size between the start of consecutive segments. If `shift < segmentlength`, segments will overlap; if `shift > segmentlength`, there will be gaps. By default, `shift = segmentlength` (no overlap).
+- `segment_length`: Number of time points in each segment.
+- `shift`: Step size between the start of consecutive segments. If `shift < segment_length`, segments will overlap; if `shift > segment_length`, there will be gaps. By default, `shift = segment_length` (no overlap).
 - `batchsize`: Number of segments per batch.
 - `shuffle`: Shuffle the order of segments before batching.
-- `partial_segment`: Allow the last segment to be shorter than `segmentlength` if not enough data remains.
+- `partial_segment`: Allow the last segment to be shorter than `segment_length` if not enough data remains.
 - `partial_batch`: Allow the last batch to contain fewer than `batchsize` segments if not enough segments remain.
 - `rng`: Random number generator for shuffling.
 
@@ -22,7 +22,7 @@ each segment containing `segmentlength` data points, each mini-batch containing 
 ## Basic usage with array
 ```jldoctest
 julia> Xtrain = rand(10, 100)
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=2, batchsize=1)
+julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=2, batchsize=1)
 julia> for batch in sdl
            println("Batch: ", summary(batch))
        end
@@ -31,7 +31,7 @@ julia> for batch in sdl
 ## With time steps and tuple input
 ```jldoctest
 julia> tsteps = 1:100
-julia> sdl = SegmentedTimeSeries((Xtrain, tsteps); segmentlength=2, batchsize=1)
+julia> sdl = SegmentedTimeSeries((Xtrain, tsteps); segment_length=2, batchsize=1)
 julia> for (data, tseg) in sdl
            println("Data: ", summary(data))
            println("Time segment: ", tseg)
@@ -40,7 +40,7 @@ julia> for (data, tseg) in sdl
 
 ## Custom shift and batch size
 ```jldoctest
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=3, shift=1, batchsize=2)
+julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=3, shift=1, batchsize=2)
 julia> for batch in sdl
            println("Batch: ", batch)
        end
@@ -48,7 +48,7 @@ julia> for batch in sdl
 
 ## Partial segments and batches
 ```jldoctest
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=3, batchsize=2, partial_segment=true, partial_batch=true)
+julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=3, batchsize=2, partial_segment=true, partial_batch=true)
 julia> for batch in sdl
            println("Batch: ", batch)
        end
@@ -58,7 +58,7 @@ julia> for batch in sdl
 ```jldoctest
 julia> using Random
 julia> rng = Random.MersenneTwister(42)
-julia> sdl = SegmentedTimeSeries(Xtrain; segmentlength=2, batchsize=1, shuffle=true, rng=rng)
+julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=2, batchsize=1, shuffle=true, rng=rng)
 julia> for batch in sdl
            println("Shuffled batch: ", batch)
        end
@@ -66,7 +66,7 @@ julia> for batch in sdl
 """
 struct SegmentedTimeSeries{D, I, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
     data::D
-    segmentlength::Int
+    segment_length::Int
     shift::Int
     batchsize::Int
     nsegments::Int
@@ -80,14 +80,14 @@ end
 
 @functor SegmentedTimeSeries (data,)
 
-function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
-    isnothing(segmentsize) && (segmentsize = _nobs(data))
-    @assert segmentsize > 0
-    @assert segmentsize <= _nobs(data) "Segment size must be less than or equal to the number of time steps."
+function SegmentedTimeSeries(data; segment_length=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+    isnothing(segment_length) && (segment_length = _nobs(data))
+    @assert segment_length > 0
+    @assert segment_length <= _nobs(data) "Segment size must be less than or equal to the number of time steps."
     !isnothing(shift) && @assert shift > 0
     @assert batchsize > 0
 
-    isnothing(shift) && (shift = segmentlength-1)
+    isnothing(shift) && (shift = segment_length-1)
     datasize = _nobs(data)
 
     # Compute indices for each segment
@@ -95,7 +95,7 @@ function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize
     m = 0
     while true
         start_idx = m * shift + 1
-        end_idx = start_idx + segmentlength - 1
+        end_idx = start_idx + segment_length - 1
         if end_idx > datasize
             if partial_segment && start_idx <= datasize
                 push!(indices, start_idx:datasize)
@@ -112,7 +112,7 @@ function SegmentedTimeSeries(data; segmentsize=nothing, shift=nothing, batchsize
     imax = partial_batch ? nsegments : nsegments - batchsize + 1
     imax = max(imax, 0)
 
-    return SegmentedTimeSeries(data, segmentlength, shift, batchsize, nsegments, shuffle, partial_segment, partial_batch, indices, imax, rng)
+    return SegmentedTimeSeries(data, segment_length, shift, batchsize, nsegments, shuffle, partial_segment, partial_batch, indices, imax, rng)
 end
 
 # Standard iteration over SegmentedTimeSeries
@@ -166,7 +166,7 @@ Base.eltype(::SegmentedTimeSeries{D}) where D = Array{eltype(D), ndims(D) + 1}
 
 function tokenize(sdl::SegmentedTimeSeries)
     return SegmentedTimeSeries(sdl.data, 
-                            sdl.segmentlength, 
+                            sdl.segment_length, 
                             sdl.shift, 
                             sdl.batchsize, 
                             sdl.nsegments, 
@@ -191,7 +191,7 @@ function Base.getindex(sdl::SegmentedTimeSeries, token)
 end
 
 """
-    create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
+    create_train_val_loaders(data; segment_length, valid_length, kwargs...)
 
 Create separate training and validation SegmentedTimeSeries loaders from a dataset with the same number of batches.
 
@@ -203,7 +203,7 @@ the same number of batches, with tokens referring to the same ordering.
 
 # Arguments
 - `data`: Input data (can be an array, tuple, or named tuple)
-- `segmentsize`: Size of training segments
+- `segment_length`: Size of training segments
 - `valid_length`: Size of validation segments
 - `kwargs...`: Additional arguments passed to SegmentedTimeSeries constructors
 
@@ -217,7 +217,7 @@ the same number of batches, with tokens referring to the same ordering.
 ```julia
 data = rand(10, 100)  # 10 features, 100 time steps
 train_loader, val_loader = create_train_val_loaders(data; 
-    segmentsize=20, valid_length=5, batchsize=4)
+    segment_length=20, valid_length=5, batchsize=4)
 # Both loaders will have the same number of batches
 @assert length(train_loader) == length(val_loader)
 ```
@@ -227,31 +227,31 @@ train_loader, val_loader = create_train_val_loaders(data;
 data = rand(10, 100)
 tsteps = 1:100
 train_loader, val_loader = create_train_val_loaders((data, tsteps); 
-    segmentsize=20, valid_length=5, batchsize=4)
+    segment_length=20, valid_length=5, batchsize=4)
 ```
 
 ## With named tuple data
 ```julia
 dataset = (observations = rand(10, 100), times = 1:100, metadata = rand(5, 100))
 train_loader, val_loader = create_train_val_loaders(dataset; 
-    segmentsize=20, valid_length=5)
+    segment_length=20, valid_length=5)
 ```
 
 # Notes
-- Training segments are spaced `segmentsize + valid_length` apart to avoid overlap with validation
-- Validation segments start at position `segmentsize + 1` to avoid overlap with first training segment
+- Training segments are spaced `segment_length + valid_length` apart to avoid overlap with validation
+- Validation segments start at position `segment_length + 1` to avoid overlap with first training segment
 - Both loaders have `partial_segment = false` and `partial_batch = false` to ensure consistent sizes
 - Both loaders are guaranteed to have the same number of batches for synchronized training/validation
 """
-function create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
+function create_train_val_loaders(data; segment_length, valid_length, kwargs...)
     datasize = _nobs(data)
-    shift = segmentsize + valid_length
+    shift = segment_length + valid_length
     
     # Calculate how many training segments we can fit
-    train_segments = _count_segments(datasize, segmentsize, shift, false)
+    train_segments = _count_segments(datasize, segment_length, shift, false)
     
-    # Calculate how many validation segments we can fit (starting from segmentsize + 1)
-    valid_datasize = datasize - segmentsize
+    # Calculate how many validation segments we can fit (starting from segment_length + 1)
+    valid_datasize = datasize - segment_length
     valid_segments = _count_segments(valid_datasize, valid_length, shift, false)
     
     # Take the minimum to ensure same number of segments
@@ -262,14 +262,14 @@ function create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
     kwargs_sync = merge(NamedTuple(kwargs), (partial_segment = false, partial_batch = false))
     
     # Create training loader
-    dataloader_train = SegmentedTimeSeries(data; segmentsize, shift, kwargs_sync...)
+    dataloader_train = SegmentedTimeSeries(data; segment_length, shift, kwargs_sync...)
     
-    # Create validation data by slicing from position segmentsize + 1 onwards
-    validation_data = _slice_data_from_index(data, segmentsize + 1)
+    # Create validation data by slicing from position segment_length + 1 onwards
+    validation_data = _slice_data_from_index(data, segment_length + 1)
     
     # Create validation loader
     dataloader_valid = SegmentedTimeSeries(validation_data;
-        segmentsize = valid_length, shift, kwargs_sync...)
+        segment_length = valid_length, shift, kwargs_sync...)
     
     # Verify they have the same length
     if length(dataloader_train) != length(dataloader_valid)
@@ -280,12 +280,12 @@ function create_train_val_loaders(data; segmentsize, valid_length, kwargs...)
 end
 
 # Helper function to count segments that would be created
-function _count_segments(datasize::Int, segmentsize::Int, shift::Int, partial_segment::Bool)
+function _count_segments(datasize::Int, segment_length::Int, shift::Int, partial_segment::Bool)
     segments = 0
     m = 0
     while true
         start_idx = m * shift + 1
-        end_idx = start_idx + segmentsize - 1
+        end_idx = start_idx + segment_length - 1
         if end_idx > datasize
             if partial_segment && start_idx <= datasize
                 segments += 1

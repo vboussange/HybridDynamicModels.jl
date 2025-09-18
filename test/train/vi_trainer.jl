@@ -55,7 +55,7 @@ using UnPack
         data, tsteps, p_true, u0_true = generate_vi_test_data()
         
         # Create dataloader
-        dataloader = SegmentedTimeSeries(data; segmentlength=10, shift=5, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segment_length=10, shift=5, batchsize=1)
         
         # Create simple model (though VI training may not work fully)
         params = ParameterLayer(init_value = (b = [0.5, 0.5],))
@@ -105,7 +105,7 @@ using UnPack
     @testset "VIBackend Training - Fixed ICs Processing" begin
         # Test the initial data processing part that should work
         data, tsteps, p_true, u0_true = generate_vi_test_data()
-        dataloader = SegmentedTimeSeries(data; segmentlength=8, shift=4, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segment_length=8, shift=4, batchsize=1)
         
         # Simple model
         params = ParameterLayer(init_value = (b = [0.5, 0.5],))
@@ -144,7 +144,7 @@ using UnPack
     @testset "VIBackend Training - Learned ICs Processing" begin
         # Test with learnable initial conditions
         data, tsteps, p_true, u0_true = generate_vi_test_data()
-        dataloader = SegmentedTimeSeries(data; segmentlength=6, shift=3, batchsize=1)
+        dataloader = SegmentedTimeSeries(data; segment_length=6, shift=3, batchsize=1)
         
         params = ParameterLayer(init_value = (b = [0.5, 0.5],))
         function dudt(layers, u, ps, t)

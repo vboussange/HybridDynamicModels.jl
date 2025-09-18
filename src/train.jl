@@ -86,7 +86,7 @@ using Lux # required
 
 # Setup
 backend = SGDBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
-dataloader = SegmentedTimeSeries(data, segmentlength=20, shift=5)
+dataloader = SegmentedTimeSeries(data, segment_length=20, shift=5)
 infer_ics = InferICs(true, NoConstraint())
 
 # Train

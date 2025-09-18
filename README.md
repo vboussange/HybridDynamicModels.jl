@@ -76,7 +76,7 @@ model = ODEModel(
 
 # Setup training data
 data = rand(2, 100)  # Your time series data
-dataloader = SegmentedTimeSeries(data; segmentsize=20, shift=10)
+dataloader = SegmentedTimeSeries(data; segment_length=20, shift=10)
 
 # Configure training
 backend = SGDBackend(

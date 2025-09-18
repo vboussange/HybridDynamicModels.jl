@@ -38,7 +38,7 @@ plot(tsteps, data_with_noise')
 
 batchsize = 1
 dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
-                                segmentlength = 20, 
+                                segment_length = 20, 
                                 shift = 5, 
                                 batchsize = batchsize)
 
