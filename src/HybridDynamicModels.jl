@@ -31,7 +31,6 @@ end
 
 include("data.jl")
 include("constraints.jl")
-include("loss_fn.jl")
 
 include("layers/utilities/parameter.jl")
 include("layers/utilities/bayesian_layer.jl")

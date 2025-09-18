@@ -135,32 +135,3 @@ function getpriors(l)
     LuxCore.contains_lux_layer(l) || throw(MethodError(getpriors, l))
     return LuxCore.Internal.fmap(getpriors, l; exclude=LuxCore.Internal.isleaf)
 end
-
-
-# TODO: implement test
-function Turing.sample(rng::AbstractRNG, model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
-        chain::Turing.MCMCChains.Chains, args...; kwargs...)
-    priors = getpriors(model)
-    posterior_samples = sample(rng, chain, args...; kwargs...)
-    mat = Array(posterior_samples)              # rows = draws, cols = flattened params
-    n = size(mat, 1)
-
-    # infer element type from first sample (or from a zero-length dummy)
-    elty = if n > 0
-        typeof(_vector_to_parameters(mat[1, :], priors))
-    else
-        typeof(_vector_to_parameters(zeros(LuxCore.parameterlength(priors)), priors))
-    end
-
-    samples = Vector{elty}(undef, n)
-    for i in 1:n
-        samples[i] = _vector_to_parameters(mat[i, :], priors)
-    end
-
-    return samples
-end
-
-function Turing.sample(model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
-        chain::Turing.MCMCChains.Chains, args...; kwargs...)
-    return sample(Random.default_rng(), model, chain, args...; kwargs...)
-end
