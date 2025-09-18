@@ -1,4 +1,4 @@
-using HybridDynamicModelling
+using HybridDynamicModels
 using Lux
 using Test
 using Random
@@ -53,7 +53,7 @@ using UnPack
         @test backend2.kwargs.chain_type === Chains
         
         # Test nameof function
-        @test HybridDynamicModelling.nameof(backend) == "MCSamplingBackend"
+        @test HybridDynamicModels.nameof(backend) == "MCSamplingBackend"
     end
     
     @testset "MCSamplingBackend Training - Fixed ICs" begin
@@ -165,7 +165,7 @@ using UnPack
         
         # Convert to vector and back
         param_vector = rand(rng, param_length)
-        reconstructed_ps = HybridDynamicModelling._vector_to_parameters(param_vector, original_ps)
+        reconstructed_ps = HybridDynamicModels._vector_to_parameters(param_vector, original_ps)
         
         # Test structure preservation
         @test keys(reconstructed_ps) == keys(original_ps)
@@ -196,7 +196,7 @@ using UnPack
         data_distrib = Normal
         
         # Create Turing model
-        turing_model_creator = HybridDynamicModelling.create_turing_model(priors, data_distrib, st_model)
+        turing_model_creator = HybridDynamicModels.create_turing_model(priors, data_distrib, st_model)
         
         # Test that it creates a callable
         @test turing_model_creator isa Function

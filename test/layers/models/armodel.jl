@@ -1,5 +1,5 @@
 using Test
-using HybridDynamicModelling
+using HybridDynamicModels
 using Random
 using Lux
 using ComponentArrays

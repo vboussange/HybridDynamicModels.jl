@@ -1,4 +1,4 @@
-using HybridDynamicModelling
+using HybridDynamicModels
 using Test
 using Bijectors
 using Distributions
@@ -129,7 +129,7 @@ using Distributions
         constraint = Constraint(transform)
         
         # Test that constraint can be applied
-        transformed = HybridDynamicModelling._to_optim_space(constraint, test_params)
+        transformed = HybridDynamicModels._to_optim_space(constraint, test_params)
         @test transformed isa NamedTuple
         @test haskey(transformed, :u0)
         

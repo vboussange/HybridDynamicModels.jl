@@ -5,7 +5,7 @@ const Optimisers = Lux.Optimisers
 import Lux: Training
 using ADTypes
 using ConcreteStructs: @concrete
-import HybridDynamicModelling: SegmentedTimeSeries
+import HybridDynamicModels: SegmentedTimeSeries
 
 function _default_callback(l, epoch, ts)
     if epoch % 10 == 0

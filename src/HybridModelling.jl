@@ -1,4 +1,4 @@
-module HybridDynamicModelling
+module HybridDynamicModels
 
 using LuxCore
 using Random

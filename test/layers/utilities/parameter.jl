@@ -1,5 +1,5 @@
 using Bijectors, Distributions
-using HybridDynamicModelling: NamedTupleConstraint, NoConstraint, BoxConstraint
+using HybridDynamicModels: NamedTupleConstraint, NoConstraint, BoxConstraint
 using Lux
 using Random
 using Test
@@ -8,7 +8,7 @@ using DifferentiationInterface
 using Zygote
 
 using Test
-using HybridDynamicModelling
+using HybridDynamicModels
 using Random
 using Lux
 using Bijectors

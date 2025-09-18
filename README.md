@@ -1,16 +1,16 @@
-[![Build Status](https://github.com/vboussange/HybridDynamicModelling.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/vboussange/HybridDynamicModelling.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Build Status](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
 <div align="center">
-    <img src="material/logo.svg" alt="HybridDynamicModelling.jl" width="200">
+    <img src="material/logo.svg" alt="HybridDynamicModels.jl" width="200">
 </div>
 
-# HybridDynamicModelling.jl
+# HybridDynamicModels.jl
 
 *A comprehensive toolbox for hybrid dynamical modeling combining domain knowledge with machine learning.*
 
 ---
 
-`HybridDynamicModelling.jl` provides a unified framework for building, training, and analyzing hybrid dynamical models that seamlessly integrate traditional scientific models with machine learning layers. Built on `Lux.jl`, it enables both gradient-based optimization and Bayesian inference for uncertainty quantification.
+`HybridDynamicModels.jl` provides a unified framework for building, training, and analyzing hybrid dynamical models that seamlessly integrate traditional scientific models with machine learning layers. Built on `Lux.jl`, it enables both gradient-based optimization and Bayesian inference for uncertainty quantification.
 
 ## 🚀 Key Features
 
@@ -36,7 +36,7 @@
 
 ```julia
 using Pkg
-Pkg.add("HybridDynamicModelling")
+Pkg.add("HybridDynamicModels")
 ```
 
 ## 🔥 Quick Start
@@ -44,7 +44,7 @@ Pkg.add("HybridDynamicModelling")
 ### Basic Hybrid ODE Model
 
 ```julia
-using HybridDynamicModelling
+using HybridDynamicModels
 using Lux, OrdinaryDiffEq, Optimisers
 
 # Define hybrid model layers

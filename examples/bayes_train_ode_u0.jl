@@ -5,7 +5,7 @@ Fitting parameters only with the simple logistic model.
 using OrdinaryDiffEq
 import Lux
 using Lux: StatefulLuxLayer, Chain, fmap
-using HybridDynamicModelling
+using HybridDynamicModels
 using SciMLSensitivity
 using UnPack
 using Plots, StatsPlots # for plotting chain

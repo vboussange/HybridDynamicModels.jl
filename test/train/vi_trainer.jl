@@ -1,4 +1,4 @@
-using HybridDynamicModelling
+using HybridDynamicModels
 using Lux
 using Test
 using Random

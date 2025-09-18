@@ -5,7 +5,7 @@ import DynamicPPL: @varname, VarName
 using Distributions
 import Functors: @leaf, fmap_with_path, fmap
 using ConcreteStructs: @concrete
-import HybridDynamicModelling: SegmentedTimeSeries
+import HybridDynamicModels: SegmentedTimeSeries
 import Turing
 
 

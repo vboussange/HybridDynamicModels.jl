@@ -1,7 +1,7 @@
-# using HybridDynamicModelling
+# using HybridDynamicModels
 using Test
 
-@testset "HybridDynamicModelling.jl" begin
+@testset "HybridDynamicModels.jl" begin
     # Write your tests here.
     include("data.jl")
     include("constraints.jl")
