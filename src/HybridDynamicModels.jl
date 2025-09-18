@@ -33,7 +33,6 @@ include("data.jl")
 include("constraints.jl")
 
 include("layers/utilities/parameter.jl")
-include("layers/utilities/bayesian_layer.jl")
 
 include("layers/models/model.jl")
 include("layers/models/odemodel.jl")

@@ -127,7 +127,7 @@ function getpriors(l::LuxCore.AbstractLuxContainerLayer{layers}) where {layers}
     return NamedTuple{layers}(getpriors.(getfield.((l,), layers)))
 end
 
-function getpriors(l::StatefulLuxLayer)
+function getpriors(l::LuxCore.StatefulLuxLayer)
     return getpriors(getfield(l, :model))
 end
 

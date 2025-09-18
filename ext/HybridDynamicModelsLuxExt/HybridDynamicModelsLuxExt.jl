@@ -1,13 +1,12 @@
 module HybridDynamicModelsLuxExt
-
+import LuxCore
 import Lux
-const Optimisers = Lux.Optimisers
+import Optimisers
 import Lux: Training
 using ADTypes
 using ConcreteStructs: @concrete
-import HybridDynamicModels: SegmentedTimeSeries
+import HybridDynamicModels: SegmentedTimeSeries, AbstractOptimBackend, InferICs
 
-include("sgdbackend.jl")
-# include("viluxbackend.jl")
+include("sgd_backend.jl")
 include("loss_fn.jl")
 end

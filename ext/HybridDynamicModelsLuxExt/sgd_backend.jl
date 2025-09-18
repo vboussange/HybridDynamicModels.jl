@@ -66,7 +66,7 @@ function _get_ics(dataloader, infer_ics::InferICs)
 end
 
 function train(backend::SGDBackend,
-        model::AbstractLuxLayer,
+        model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         infer_ics::InferICs,
         rng = Random.default_rng(),

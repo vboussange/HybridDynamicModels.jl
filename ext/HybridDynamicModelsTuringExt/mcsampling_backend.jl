@@ -64,7 +64,7 @@ function _vector_to_parameters(ps_new::AbstractVector, ps::NamedTuple)
 end
 
 # required for handling prior distributions in NamedTuples
-Lux.parameterlength(dist::Distributions.Distribution) = length(dist)
+LuxCore.parameterlength(dist::Distributions.Distribution) = length(dist)
 Base.vec(dist::Product) = dist.v
 @leaf Distributions.Distribution
 
@@ -159,7 +159,7 @@ posterior_samples = sample(result.st_model, chains, 100)
 - Choose appropriate `datadistrib` based on your data characteristics
 """
 function train(backend::MCSamplingBackend,
-        model::AbstractLuxLayer,
+        model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         infer_ics::InferICs,
         rng = Random.default_rng())
@@ -182,22 +182,22 @@ function train(backend::MCSamplingBackend,
     if istrue(infer_ics)
         bics = []
         for ic in ic_list
-            ps, st = Lux.setup(rng, ic)
+            ps, st = LuxCore.setup(rng, ic)
             u0, _ = ic(ps, st)
             push!(bics, BayesianLayer(ic, (;u0 = arraydist(backend.datadistrib.(u0.u0)))))
         end
         ics = ICLayer(vcat(bics...))
     else
         # Both work:
-        # ics = ICLayer(Lux.Experimental.FrozenLayer.(ic_list))
+        # ics = ICLayer(LuxCore.Experimental.FrozenLayer.(ic_list))
         ics = Lux.Experimental.FrozenLayer(ICLayer(vcat(ic_list...)))
     end
 
     ode_model_with_ics = Chain(initial_conditions = ics, model = model)
     priors = getpriors(ode_model_with_ics)
 
-    ps_init, st = Lux.setup(rng, ode_model_with_ics)
-    st_model = StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)
+    ps_init, st = LuxCore.setup(rng, ode_model_with_ics)
+    st_model = LuxCore.StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)
 
     turing_fit = create_turing_model(priors, backend.datadistrib, st_model)
 

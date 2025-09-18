@@ -24,7 +24,7 @@ Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [extensions]
 HybridDynamicModelsLuxExt = ["Lux", "Optimisers"]
-HybridDynamicModelsTuringExt = ["Turing"]
+HybridDynamicModelsTuringExt = ["Turing", "Lux"]
 
 [compat]
 ADTypes = "1.17.0"
