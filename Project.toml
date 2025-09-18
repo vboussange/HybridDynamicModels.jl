@@ -23,8 +23,8 @@ Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [extensions]
-HybridModellingLuxExt = ["Lux", "Optimisers"]
-HybridModellingTuringExt = ["Turing"]
+HybridDynamicModelsLuxExt = ["Lux", "Optimisers"]
+HybridDynamicModelsTuringExt = ["Turing"]
 
 [compat]
 ADTypes = "1.17.0"

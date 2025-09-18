@@ -1,4 +1,4 @@
-abstract type AbstractDynamicalModel  <: Lux.AbstractLuxWrapperLayer{:layers} end
+abstract type AbstractDynamicalModel  <: LuxCore.AbstractLuxWrapperLayer{:layers} end
 
 
 # Handling batches

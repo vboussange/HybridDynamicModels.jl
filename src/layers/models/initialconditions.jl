@@ -6,7 +6,7 @@
 Initial condition layer.
 
 ## Arguments
-  - `ics`: A Lux layer, a `ParameterLayer` or a vector of
+  - `ics`: A LuxCore layer, a `ParameterLayer` or a vector of
     `ParameterLayer`.
 
 ## Inputs
@@ -23,7 +23,7 @@ Initial condition layer.
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct ICLayer <: Lux.AbstractLuxWrapperLayer{:ics}
+@concrete struct ICLayer <: LuxCore.AbstractLuxWrapperLayer{:ics}
     ics
 end
 
@@ -57,14 +57,14 @@ function (lics::ICLayer{<:AbstractLuxLayer})(x::NamedTuple, ps, st)
 end
 
 
-# function Lux.initialstates(rng::AbstractRNG, ics::ICLayer{<:AbstractVector{<:ParameterLayer}})
+# function LuxCore.initialstates(rng::AbstractRNG, ics::ICLayer{<:AbstractVector{<:ParameterLayer}})
 #     n_ics = length(ics.ics)
-#     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([Lux.initialstates(rng, _u0) for _u0 in ics.ics])
+#     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([LuxCore.initialstates(rng, _u0) for _u0 in ics.ics])
 # end
 
-# function Lux.initialparameters(rng::AbstractRNG, ics::ICLayer{<:AbstractVector{<:ParameterLayer}})
+# function LuxCore.initialparameters(rng::AbstractRNG, ics::ICLayer{<:AbstractVector{<:ParameterLayer}})
 #     n_ics = length(ics.ics)
-#     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([Lux.initialparameters(rng, _u0) for _u0 in ics.ics])
+#     NamedTuple{ntuple(i -> Symbol(:u0_, i), n_ics)}([LuxCore.initialparameters(rng, _u0) for _u0 in ics.ics])
 # end
 
 function (lics::ICLayer{<:NamedTuple{fields}})(x::NamedTuple, ps, st) where fields

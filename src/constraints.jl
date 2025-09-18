@@ -8,7 +8,7 @@ function _clamp(x, a, b)
 end
 
 struct NoConstraint <: AbstractLuxLayer end
-Lux.initialstates(::AbstractRNG, layer::NoConstraint) = (;)
+LuxCore.initialstates(::AbstractRNG, layer::NoConstraint) = (;)
 (n::NoConstraint)(x, st) = x, st
 inverse(::NoConstraint, y, st) = y, st
 
@@ -16,7 +16,7 @@ inverse(::NoConstraint, y, st) = y, st
 @concrete struct BoxConstraint <: AbstractLuxLayer
   init_state <: Function
 end
-Lux.initialstates(::AbstractRNG, layer::BoxConstraint) = layer.init_state()
+LuxCore.initialstates(::AbstractRNG, layer::BoxConstraint) = layer.init_state()
 BoxConstraint(lb::AbstractArray, ub::AbstractArray) = BoxConstraint(() -> (;lb, ub))
 
 function (::BoxConstraint)(y::AbstractArray, st)
@@ -153,7 +153,7 @@ param = ParameterLayer(
     init_value = (;growth_rate = 0.05)
 )
 
-ps, st = Lux.setup(Random.default_rng(), param)
+ps, st = LuxCore.setup(Random.default_rng(), param)
 constrained_value, _ = param(ps, st)
 # constrained_value.growth_rate will be >= 0
 ```

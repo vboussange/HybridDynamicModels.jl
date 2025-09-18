@@ -2,10 +2,10 @@
 """
     AnalyticModel(layers::NamedTuple, fun::Function; kwargs...)
 
-Wraps an analytic model for direct evaluation using Lux layers.
+Wraps an analytic model for direct evaluation using LuxCore layers.
 
 ## Arguments
-  - `layers`: NamedTuple of Lux layers representing the layers of the model.
+  - `layers`: NamedTuple of LuxCore layers representing the layers of the model.
   - `fun`: Function that computes the analytic solution, with signature `fun(layers, u0, t0, ps, t)`.
   - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `t0`, `saveat`).
 
@@ -31,14 +31,14 @@ Wraps an analytic model for direct evaluation using Lux layers.
 julia> layers = (; params = ParameterLayer(init_value = (a = 1.0, b = 0.5)))
 julia> analytic_solution(layers, u0, t0, ps, t) = u0 .* exp.(layers.params(ps.params)[1].a .* (t .- t0))
 julia> model = AnalyticModel(layers, analytic_solution)
-julia> ps, st = Lux.setup(Random.default_rng(), model)
+julia> ps, st = LuxCore.setup(Random.default_rng(), model)
 julia> model((; u0 = [1.0], t0 = 0.0, saveat = 0:0.1:1.0), ps, st)
 ```
 
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct AnalyticModel <: Lux.AbstractLuxWrapperLayer{:layers}
+@concrete struct AnalyticModel <: LuxCore.AbstractLuxWrapperLayer{:layers}
     layers<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
     fun # function that computes the analytic solution
     kwargs

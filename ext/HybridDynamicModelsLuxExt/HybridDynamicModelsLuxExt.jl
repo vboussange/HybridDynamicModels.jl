@@ -1,4 +1,4 @@
-module HybridModellingLuxExt
+module HybridDynamicModelsLuxExt
 
 import Lux
 const Optimisers = Lux.Optimisers

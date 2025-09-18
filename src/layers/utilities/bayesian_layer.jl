@@ -1,6 +1,6 @@
 using Distributions
 import Turing: arraydist
-import Lux: LuxCore, AbstractLuxContainerLayer
+import LuxCore
 
 """
     BayesianLayer(layer, priors)
@@ -43,8 +43,8 @@ priors = getpriors(bayesian_ode)
 ```
 """
 
-@concrete struct BayesianLayer <: AbstractLuxWrapperLayer{:layer}
-    layer <: AbstractLuxLayer
+@concrete struct BayesianLayer <: LuxCore.AbstractLuxWrapperLayer{:layer}
+    layer <: LuxCore.AbstractLuxLayer
     priors <: Union{Distributions.Distribution, NamedTuple}
 end
 
@@ -102,7 +102,7 @@ priors = getpriors(model)  # Automatically used by MCMC training
 getpriors(l::BayesianLayer{L, P}) where {L, P <: NamedTuple} = l.priors
 
 function getpriors(l::BayesianLayer{L, D}) where {L, D<:Distributions.Distribution}
-    ps = Lux.initialparameters(Random.default_rng(), l)
+    ps = LuxCore.initialparameters(Random.default_rng(), l)
     if isa(l.priors, UnivariateDistribution)
         distrib = []
         for k in keys(ps)
@@ -117,13 +117,13 @@ function getpriors(l::BayesianLayer{L, D}) where {L, D<:Distributions.Distributi
 end
 
 getpriors(l::NamedTuple) = map(getpriors, l)
-getpriors(::AbstractLuxLayer) = NamedTuple()
+getpriors(::LuxCore.AbstractLuxLayer) = NamedTuple()
 
-function getpriors(l::AbstractLuxWrapperLayer{layer}) where {layer}
+function getpriors(l::LuxCore.AbstractLuxWrapperLayer{layer}) where {layer}
     return getpriors(getfield(l, layer))
 end
 
-function getpriors( l::AbstractLuxContainerLayer{layers}) where {layers}
+function getpriors(l::LuxCore.AbstractLuxContainerLayer{layers}) where {layers}
     return NamedTuple{layers}(getpriors.(getfield.((l,), layers)))
 end
 
@@ -138,7 +138,7 @@ end
 
 
 # TODO: implement test
-function Turing.sample(rng::AbstractRNG, model::Union{AbstractLuxLayer, StatefulLuxLayer},
+function Turing.sample(rng::AbstractRNG, model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
         chain::Turing.MCMCChains.Chains, args...; kwargs...)
     priors = getpriors(model)
     posterior_samples = sample(rng, chain, args...; kwargs...)
@@ -149,7 +149,7 @@ function Turing.sample(rng::AbstractRNG, model::Union{AbstractLuxLayer, Stateful
     elty = if n > 0
         typeof(_vector_to_parameters(mat[1, :], priors))
     else
-        typeof(_vector_to_parameters(zeros(Lux.parameterlength(priors)), priors))
+        typeof(_vector_to_parameters(zeros(LuxCore.parameterlength(priors)), priors))
     end
 
     samples = Vector{elty}(undef, n)
@@ -160,7 +160,7 @@ function Turing.sample(rng::AbstractRNG, model::Union{AbstractLuxLayer, Stateful
     return samples
 end
 
-function Turing.sample(model::Union{AbstractLuxLayer, StatefulLuxLayer},
+function Turing.sample(model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
         chain::Turing.MCMCChains.Chains, args...; kwargs...)
     return sample(Random.default_rng(), model, chain, args...; kwargs...)
 end

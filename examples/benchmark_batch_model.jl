@@ -1,4 +1,4 @@
-using HybridModellingExperiments
+using HybridDynamicModelsExperiments
 using HybridDynamicModels
 using Lux
 using SciMLSensitivity

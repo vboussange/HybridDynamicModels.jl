@@ -33,7 +33,7 @@ julia> x == (a = [1.0, 1.0], b = (0.0, 1.0))
 true
 ```
 """
-@concrete struct ParameterLayer <: AbstractLuxLayer 
+@concrete struct ParameterLayer <: LuxCore.AbstractLuxLayer 
     constraint <: Constraint
     init_value <: Function
     init_state <: Function
@@ -44,7 +44,7 @@ function ParameterLayer(;constraint = NoConstraint(), init_value = (;), init_sta
     # isa(init_value, NamedTuple) || isa(init_value, AbstractArray) || throw(ArgumentError("`init_value` must be a `NamedTuple`"))
     isa(constraint, Constraint) || throw(ArgumentError("`constraint` must be a `Constraint`"))
 
-    _, st_constraint = Lux.setup(Random.default_rng(), constraint)
+    _, st_constraint = LuxCore.setup(Random.default_rng(), constraint)
     init_values_transformed, _ = inverse(constraint, init_value, st_constraint)
     init_state_value = merge(init_state_value, (; constraint = st_constraint))
     return ParameterLayer(constraint, () -> deepcopy(init_values_transformed), () -> deepcopy(init_state_value))
@@ -59,11 +59,11 @@ end
 
 (pl::ParameterLayer)(_, ps, st) = pl(ps, st) # required for compatibility with Lux Training API
 
-Lux.initialstates(::AbstractRNG, layer::ParameterLayer) = layer.init_state()
-Lux.initialparameters(::AbstractRNG, layer::ParameterLayer) = layer.init_value()
+LuxCore.initialstates(::AbstractRNG, layer::ParameterLayer) = layer.init_state()
+LuxCore.initialparameters(::AbstractRNG, layer::ParameterLayer) = layer.init_value()
 
 # https://github.com/LuxDL/Lux.jl/blob/b467ff85e293af84d9e11d86bad7fb19e1cb561a/src/helpers/stateful.jl#L138-L142
-function (s::StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)
+function (s::LuxCore.StatefulLuxLayer{ST, M, psType, stType} where {ST, M <: ParameterLayer, psType, stType})(ps=s.ps)
     y, st = s.model(ps, get_state(s))
     set_state!(s, st)
     return y

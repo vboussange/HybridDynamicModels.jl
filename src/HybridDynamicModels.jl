@@ -17,13 +17,13 @@ export LogMSELoss, PoissonLoss
 export train, InferICs
 
 # This must be changed, with
-ext = Base.get_extension(@__MODULE__, :HybridModellingTuringExt)
+ext = Base.get_extension(@__MODULE__, :HybridDynamicModelsTuringExt)
 if !isnothing(ext)
     export ext: MCSamplingBackend
     export ext: VIBackend
 end
 
-ext = Base.get_extension(@__MODULE__, :HybridModellingLuxExt)
+ext = Base.get_extension(@__MODULE__, :HybridDynamicModelsLuxExt)
 if !isnothing(ext)
     export ext: SGDBackend
 end
