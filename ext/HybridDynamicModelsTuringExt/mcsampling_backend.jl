@@ -25,7 +25,7 @@ end
 
 # required for handling prior distributions in NamedTuples
 LuxCore.parameterlength(dist::Distributions.Distribution) = length(dist)
-Base.vec(dist::Product) = dist.v
+Base.vec(dist::Distributions.Product) = dist.v
 @leaf Distributions.Distribution
 
 function create_turing_model(ps_priors, data_distrib, st_model)
@@ -39,7 +39,7 @@ function create_turing_model(ps_priors, data_distrib, st_model)
             varname = Symbol(join(path, "_"))
             # Sample parameter and update varinfo
             value, new_varinfo = DynamicPPL.tilde_assume!!(
-                model.context, node, VarName{varname}(), varinfo_ref[])
+                model.context, node, DynamicPPL.VarName{varname}(), varinfo_ref[])
             varinfo_ref[] = new_varinfo
             return value
         end
@@ -57,7 +57,7 @@ function create_turing_model(ps_priors, data_distrib, st_model)
             preds = st_model(xs[i], ps)
             dists = data_distrib.(preds)
             _retval, varinfo = DynamicPPL.tilde_observe!!(
-                model.context, arraydist(dists), ys[i], @varname(ys[i]), varinfo
+                model.context, arraydist(dists), ys[i], DynamicPPL.@varname(ys[i]), varinfo
             )
         end
 

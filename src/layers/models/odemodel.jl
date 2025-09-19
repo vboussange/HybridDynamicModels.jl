@@ -53,7 +53,7 @@ function LuxCore.initialstates(rng::AbstractRNG, m::ODEModel)
     return st
 end
 
-function forward(m::ODEModel, layers, u0, tspan, saveat, ps; kwargs...)
+function forward(m::ODEModel, layers, u0, tspan, saveat, ps; alg, kwargs...)
     function __dudt(u, p, t)
         m.dudt(layers, u, p, t)
     end
@@ -62,7 +62,6 @@ function forward(m::ODEModel, layers, u0, tspan, saveat, ps; kwargs...)
                             u0, 
                             tspan, 
                             ps)
-    alg = kwargs[:alg] === nothing ? Tsit5() : kwargs[:alg]
 
     sol = solve(prob, alg; saveat, kwargs...) |> Array
     return sol

@@ -23,18 +23,16 @@ include("layers/models/armodel.jl")
 include("train.jl")
 
 
-export apply
 export SegmentedTimeSeries, tokenize, tokens
 export NoConstraint, BoxConstraint, NamedTupleConstraint
 export ParameterLayer, ICLayer
 export ICLayer, ODEModel, AnalyticModel, ARModel
 export BayesianLayer, getpriors
-export LogMSELoss, PoissonLoss
 
 export train, InferICs
 
 export SGDBackend
 export MCSamplingBackend
-export VIBackend
+# export VIBackend
 
 end

@@ -151,7 +151,7 @@ _nobs(data::AbstractArray) = size(data)[end]
 function _nobs(data::Union{Tuple, NamedTuple})
     length(data) > 0 || throw(ArgumentError("Need at least one data input"))
     n = _nobs(data[1])
-    for i in keys(data)
+    for i in 1:length(data)
         ni = _nobs(data[i])
         n == ni || throw(DimensionMismatch("All data inputs should have the same number of observations, i.e. size in the last dimension. " * 
             "But data[$(repr(first(keys(data))))] ($(summary(data[1]))) has $n, while data[$(repr(i))] ($(summary(data[i]))) has $ni."))

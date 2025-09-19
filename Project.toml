@@ -9,18 +9,16 @@ Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 DispatchDoctor = "8d63f2c5-f18a-4cf2-ba9d-b3f60fc568c8"
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-DynamicPPL = "366bfd00-2699-11ea-058f-f148b4cae6d8"
 Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 LuxCore = "bb33d45b-7691-41d6-9220-0943567d0623"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [weakdeps]
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 
 [extensions]
 HybridDynamicModelsLuxExt = ["Lux", "Optimisers", "ComponentArrays"]
@@ -29,7 +27,6 @@ HybridDynamicModelsTuringExt = ["Turing", "Lux", "ComponentArrays"]
 [compat]
 ADTypes = "1.17.0"
 DiffEqBase = "6.185.0"
-DynamicPPL = "0.37.1"
 Functors = "0.5.2"
 Lux = "= 1.17"
 julia = "1.10.10"

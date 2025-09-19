@@ -1,13 +1,3 @@
-using HybridDynamicModels
-using DifferentiationInterface
-import Zygote
-using SciMLSensitivity
-using OrdinaryDiffEqTsit5
-using ComponentArrays
-using Lux
-using StableRNGs
-using Test
-
 rng = StableRNG(42)
 layers = (; layer1 = Lux.Dense(10, 10, relu))
 tspan = (0.0f0, 1.0f0)
