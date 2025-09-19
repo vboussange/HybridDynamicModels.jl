@@ -35,10 +35,46 @@ result = train(backend, model, dataloader, infer_ics)
 abstract type SGDBackend <: AbstractOptimBackend end
 
 
+"""
+    MCSamplingBackend(sampler, n_iterations, datadistrib; kwargs...)
+
+Training backend for Bayesian inference of Lux.jl models using Monte Carlo sampling. Requires models with Bayesian priors (use `BayesianLayer` wrappers). The `train` function will return a NamedTuple with:
+- `chains`: Turing.jl Markov chain containing posterior samples
+- `st_model`: StatefulLuxLayer for forward predictions with posterior samples
+
+## Fields
+- `sampler`: Turing.jl MCMC sampler (e.g., `NUTS()`, `HMC()`)
+- `n_iterations`: Number of MCMC samples to draw
+- `datadistrib`: Data distribution for likelihood computation
+- `kwargs`: Additional keyword arguments passed to the sampler
+
+## Arguments
+- `sampler`: MCMC sampling algorithm from Turing.jl
+- `n_iterations`: Total number of posterior samples to generate
+- `datadistrib`: Distribution constructor for data likelihood (e.g., `Normal`, `LogNormal`)
+
+## Keyword Arguments
+- `kwargs...`: Additional sampler-specific options (e.g., `progress=true`, `drop_warmup=true`)
+
+## Example
+```julia
+# Setup Bayesian model with priors
+bayesian_model = BayesianLayer(ode_model, parameter_priors)
+backend = MCSamplingBackend(NUTS(0.65), 1000, LogNormal)
+infer_ics = InferICs(true)
+
+# Bayesian training
+result = train(backend, bayesian_model, dataloader, infer_ics)
+
+# Analyze posterior
+chains = result.chains
+posterior_samples = sample(result.st_model, chains, 100)
+```
+"""
 abstract type MCSamplingBackend <: AbstractOptimBackend end
 
 
-abstract type VIBackend <: AbstractOptimBackend end
+# abstract type VIBackend <: AbstractOptimBackend end
 
 abstract type AbstractSetup end
 

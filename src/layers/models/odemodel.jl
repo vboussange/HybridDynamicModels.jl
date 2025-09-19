@@ -80,6 +80,7 @@ function (m::ODEModel)(x::NamedTuple, ps, st)
 
     sol = solve(prob, alg; saveat, kwargs...) |> Array
     new_st = NamedTuple{component_keys}(map(k -> get_state(getproperty(layers, k)), component_keys))
+    new_st = merge(new_st, (; kwargs = st.kwargs))
     return sol, new_st
 end
 (m::ODEModel)(ps, st) = m(NamedTuple(), ps, st)

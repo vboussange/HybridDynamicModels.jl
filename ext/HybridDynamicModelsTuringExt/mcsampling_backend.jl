@@ -1,37 +1,3 @@
-
-
-"""
-    MCSamplingBackend <: AbstractOptimBackend
-
-Training backend for Bayesian inference of Lux.jl models using Markov Chain Monte Carlo (MCMC). Requires models with Bayesian priors (use `BayesianLayer` wrappers)
-
-## Fields
-- `sampler`: Turing.jl MCMC sampler (e.g., `NUTS()`, `HMC()`)
-- `n_iterations`: Number of MCMC samples to draw
-- `datadistrib`: Data distribution for likelihood computation
-- `kwargs`: Additional keyword arguments passed to the sampler
-
-## Arguments
-- `sampler`: MCMC sampling algorithm from Turing.jl
-- `n_iterations`: Total number of posterior samples to generate
-- `datadistrib`: Distribution constructor for data likelihood (e.g., `Normal`, `LogNormal`)
-
-## Keyword Arguments
-- `kwargs...`: Additional sampler-specific options (e.g., `progress=true`, `drop_warmup=true`)
-
-## Example
-```julia
-# Gaussian data likelihood
-backend = MCSamplingBackend(NUTS(0.65), 1000, Normal)
-
-# Log-normal data for positive-valued observations
-backend = MCSamplingBackend(NUTS(0.65), 2000, x -> LogNormal(log(x), 0.1))
-
-# Train with MCMC
-result = train(backend, bayesian_model, dataloader, infer_ics)
-chains = result.chains
-```
-"""
 @concrete struct MCSamplingBackend <: AbstractOptimBackend
     sampler::Any
     n_iterations::Int
@@ -39,12 +5,6 @@ chains = result.chains
     kwargs::Any
 end
 
-"""
-    MCSamplingBackend(sampler, n_iterations, datadistrib; kwargs...)
-
-Construct an MCSamplingBackend for Bayesian training of Lux.jl models.
-See [`MCSamplingBackend`](@ref) for detailed documentation.
-"""
 function MCSamplingBackend(sampler,
         n_iterations,
         datadistrib,
@@ -107,57 +67,6 @@ function create_turing_model(ps_priors, data_distrib, st_model)
     return (xs, ys) -> DynamicPPL.Model(generated_model, (; xs, ys))
 end
 
-
-"""
-    train(backend::MCSamplingBackend, model, dataloader, infer_ics, rng=Random.default_rng())
-
-Perform Bayesian inference on a hybrid dynamical model using MCMC sampling.
-
-## Arguments
-- `backend::MCSamplingBackend`: MCMC configuration and sampling settings
-- `model::AbstractLuxLayer`: Bayesian dynamical model with priors (use `BayesianLayer` wrappers)
-- `dataloader::SegmentedTimeSeries`: Time series data split into segments
-- `infer_ics::InferICs`: Configuration for initial condition inference
-- `rng=Random.default_rng()`: Random number generator for sampling
-
-## Returns
-A NamedTuple with:
-- `chains`: Turing.jl MCMC chains containing posterior samples
-- `st_model`: StatefulLuxLayer for forward predictions with posterior samples
-
-## Behavior
-The function:
-1. **Tokenizes** the dataloader and extracts segment data
-2. **Creates Bayesian initial conditions** based on `infer_ics`
-3. **Constructs a Turing model** from the Lux model and priors
-4. **Runs MCMC sampling** to approximate the posterior distribution
-5. **Returns chains** for posterior analysis and uncertainty quantification
-
-## Initial Condition Handling
-- If `InferICs{true}`: Creates Bayesian initial conditions with data-informed priors
-- If `InferICs{false}`: Uses fixed initial conditions from data
-
-## Example
-```julia
-# Setup Bayesian model with priors
-bayesian_model = BayesianLayer(ode_model, parameter_priors)
-backend = MCSamplingBackend(NUTS(0.65), 1000, LogNormal)
-infer_ics = InferICs(true)
-
-# Bayesian training
-result = train(backend, bayesian_model, dataloader, infer_ics)
-
-# Analyze posterior
-chains = result.chains
-posterior_samples = sample(result.st_model, chains, 100)
-```
-
-## Notes
-- Requires models with proper Bayesian priors via `BayesianLayer`
-- MCMC provides full posterior uncertainty quantification
-- Use `sample(st_model, chains, n)` to generate posterior predictive samples
-- Choose appropriate `datadistrib` based on your data characteristics
-"""
 function train(backend::MCSamplingBackend,
         model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
