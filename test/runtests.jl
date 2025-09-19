@@ -15,16 +15,12 @@ using OrdinaryDiffEq
 
     include("data.jl")
     include("constraints.jl")
+
     
-    @testset "Layer Utilities" begin
-        include("layers/utilities/parameter.jl")
-        include("layers/utilities/initialconditions.jl")
-    end
-    
-    @testset "Model Layers" begin
-        include("layers/models/odemodel.jl")
-        include("layers/models/analyticmodel.jl")
-        include("layers/models/armodel.jl")
+    @testset "Layers" begin
+        include("layers/parameter.jl")
+        include("layers/initialconditions.jl")
+        include("layers/models.jl")
     end
     
     # Training API tests
