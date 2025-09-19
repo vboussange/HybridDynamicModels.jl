@@ -1,14 +1,20 @@
 module HybridDynamicModelsLuxExt
 import LuxCore
-import Lux
+import Lux: Lux, Chain, Training
 import Optimisers
-import Lux: Training
+import ComponentArrays: ComponentArray
 using ADTypes
 using ConcreteStructs: @concrete
 using HybridDynamicModels: HybridDynamicModels,
                            SegmentedTimeSeries,
                            AbstractOptimBackend,
-                           InferICs
+                           InferICs,
+                           tokenize,
+                           tokens,
+                           get_u0_constraint,
+                           ParameterLayer,
+                           ICLayer,
+                           is_ics_estimated
 
 function _default_callback(l, epoch, ts)
     if epoch % 10 == 0
@@ -44,7 +50,7 @@ function _get_ic_layer(dataloader, experimental_setup)
             init_value = (; u0))
     end
     ics_list = [_fun(tok) for tok in tokens(dataloader)]
-    return InitialConditions(ics_list)
+    return ICLayer(ics_list)
 end
 
 function _get_ic_values(dataloader, ic_layer, ps, st)
@@ -58,7 +64,7 @@ function _get_ic_values(dataloader, ic_layer, ps, st)
     return segment_ics
 end
 
-function train(backend::SGDBackend,
+function HybridDynamicModels.train(backend::SGDBackend,
         model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
         infer_ics::InferICs,
@@ -69,7 +75,7 @@ function train(backend::SGDBackend,
 
     ics_layer = _get_ic_layer(dataloader, infer_ics)
 
-    if !is_ics_estimated(experimental_setup)
+    if !is_ics_estimated(infer_ics)
         ics_layer = Lux.Experimental.FrozenLayer(ics_layer)
     end
 
@@ -101,7 +107,7 @@ function train(backend::SGDBackend,
         backend.callback(train_loss, epoch, train_state)
     end
 
-    segment_ics = _get_ic_values(dataloader, ics_layer, best_ps, best_st)
+    segment_ics = _get_ic_values(dataloader, ics_layer, best_ps.initial_conditions, best_st.initial_conditions)
 
     return (; ps = best_ps.model, st = best_st.model, ics = segment_ics)
 end

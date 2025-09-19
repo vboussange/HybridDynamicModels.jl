@@ -1,145 +1,77 @@
 using Test
 using Random
-using Lux, Optimisers
+using Lux, Optimisers, ComponentArrays
 using HybridDynamicModels
-using ComponentArrays
+import HybridDynamicModels: is_ics_estimated
 using Optimisers
 using DifferentiationInterface
 using Zygote
+using StableRNGs
 
 @testset "HybridDynamicModelsLuxExt Tests" begin
-    @testset "Loss Functions" begin
-        @testset "LogMSELoss" begin
-            loss_fn = LogMSELoss()
+    @testset "SGDBackend, IC inference: $(is_ics_estimated(infer_ics))" for infer_ics in (InferICs(false), InferICs(true))
+        rng = StableRNG(1234)
+        
+        # Define logistic growth model parameters (ground truth)
+        K_true = [10.0]  # carrying capacity
+        r_true = [1.5]   # growth rate
+        N0_true = [1.0 ] # initial population
+        
+        # Define the analytic logistic function
+        function logistic_solution(layers, u0, t0, ps, t)
+            # Extract parameters
+            params = layers.params(ps.params)
+            K = params.K
+            r = params.r
             
-            # Test basic functionality
-            data = [1.0, 2.0, 3.0]
-            pred = [1.1, 2.1, 3.1]
-            loss = loss_fn(data, pred)
-            @test loss isa Float32
-            @test loss > 0
-            
-            # Test with negative values (should be clamped)
-            data_neg = [-1.0, 2.0, 3.0]
-            pred_neg = [1.0, 2.0, 3.0]
-            loss_neg = loss_fn(data_neg, pred_neg)
-            @test loss_neg < Inf  # Should not be infinite
-            
-            # Test size mismatch
-            data_wrong_size = [1.0, 2.0]
-            loss_size = loss_fn(data_wrong_size, pred)
-            @test loss_size == Inf
-            
-            # Test gradient computation
-            function test_loss(data, pred)
-                return loss_fn(data, pred)
-            end
-            grad = Zygote.gradient((d, p) -> test_loss(d, p), data, pred)
-            @test grad[1] isa Vector{Float64}
-            @test grad[2] isa Vector{Float64}
+            # Logistic growth solution: N(t) = K / (1 + (K/N0 - 1)*exp(-r*t))
+            return @. K / (1 + (K/u0 - 1) * exp(-r * (t - t0)))
         end
         
-        @testset "PoissonLoss" begin
-            loss_fn = PoissonLoss()
-            
-            # Test basic functionality
-            data = [1.0, 2.0, 3.0]
-            pred = [1.1, 2.1, 3.1]
-            loss = loss_fn(data, pred)
-            @test loss isa Float32
-            @test loss > 0
-            
-            # Test with negative values (should be clamped)
-            data_neg = [-1.0, 2.0, 3.0]
-            pred_neg = [1.0, 2.0, 3.0]
-            loss_neg = loss_fn(data_neg, pred_neg)
-            @test loss_neg < Inf
-            
-            # Test size mismatch
-            data_wrong_size = [1.0, 2.0]
-            loss_size = loss_fn(data_wrong_size, pred)
-            @test loss_size == Inf
-            
-            # Test gradient computation
-            function test_loss(data, pred)
-                return loss_fn(data, pred)
-            end
-            grad = Zygote.gradient((d, p) -> test_loss(d, p), data, pred)
-            @test grad[1] isa Vector{Float64}
-            @test grad[2] isa Vector{Float64}
-        end
-    end
-    
-    @testset "SGDBackend" begin
-        rng = Random.default_rng()
+        # Create the model
+        tspan = (0.0, 5.0)
+        tsteps = collect(0.0:0.1:5.0)
+
+        layers = (; params = ParameterLayer(init_value = (K = [8.0], r = [0.3])))
+        model = AnalyticModel(layers, logistic_solution)
+        ps, st = Lux.setup(rng, model)
         
-        # Create a simple model for testing
-        model = Dense(2, 1)
+        # Generate true trajectory
+        ps_true = (; params = (; K = K_true, r = r_true))
+        data = model((; u0 = N0_true, saveat = tsteps, tspan), ps_true, st)[1]
+        # data .+= 0.2 * randn(rng, size(data))  # Add some noise
         
-        # Create mock dataloader
-        # This is simplified - in practice you'd use actual SegmentedTimeSeries
-        data1 = rand(rng, 2, 10)
-        tsteps1 = collect(0.0:0.1:0.9)
-        data2 = rand(rng, 2, 10)
-        tsteps2 = collect(0.0:0.1:0.9)
-        
-        # Mock SegmentedTimeSeries structure
-        struct MockSegmentedTimeSeries
-            data::Dict{Any, Tuple{Matrix{Float64}, Vector{Float64}}}
-        end
-        
-        function tokenize(d::MockSegmentedTimeSeries)
-            return d
-        end
-        
-        function tokens(d::MockSegmentedTimeSeries)
-            return keys(d.data)
-        end
-        
-        Base.getindex(d::MockSegmentedTimeSeries, key) = d.data[key]
-        
-        dataloader = MockSegmentedTimeSeries(Dict(
-            1 => (data1, tsteps1),
-            2 => (data2, tsteps2)
-        ))
-        
+        # Create SegmentedTimeSeries with segment_length = 5
+        dataloader = SegmentedTimeSeries((data, tsteps); 
+                                        segment_length = 5, 
+                                        batchsize = 1,
+                                        partial_segment = true)
+                
         # Create backend
         opt = Optimisers.Adam(0.01)
-        loss_fn = LogMSELoss()
-        backend = SGDBackend(opt, 5, AutoZygote(), loss_fn)
+        loss_fn = MSELoss()
+        backend = SGDBackend(opt, 200, AutoZygote(), loss_fn)
+                
+        # Train the model
+        result = train(backend, model, dataloader, infer_ics, rng)
         
-        # Mock experimental setup
-        struct MockInferICs <: AbstractSetup
-            estimate_ics::Bool
-        end
+        # Extract recovered parameters
+        recovered_K = result.ps.params.K
+        recovered_r = result.ps.params.r
+
+        # Test that parameters are recovered reasonably well
+        @test isapprox(recovered_K, K_true, atol=1e-3, rtol=1e-3)  # Allow some tolerance
+        @test isapprox(recovered_r, r_true, atol=1e-3, rtol=1e-3)  # Allow some tolerance
+
+        # Test that the result has expected structure
+        @test haskey(result, :ps)
+        @test haskey(result, :st)
+        @test haskey(result, :ics)
         
-        function is_ics_estimated(s::MockInferICs)
-            return s.estimate_ics
-        end
-        
-        function get_u0_constraint(s::MockInferICs)
-            return nothing
-        end
-        
-        infer_ics = MockInferICs(false)
-        
-        # Test training (this will likely fail due to incomplete mocking, but tests structure)
-        try
-            result = train(backend, model, dataloader, infer_ics, rng)
-            @test haskey(result, :ps)
-            @test haskey(result, :st)
-            @test haskey(result, :ics)
-        catch e
-            # Expected to fail due to mocking limitations
-            @test e isa Exception
-        end
-        
-        # Test callback functionality
-        callback_calls = []
-        custom_callback = (l, epoch, ts) -> push!(callback_calls, (l, epoch))
-        backend_custom = SGDBackend(opt, 2, AutoZygote(), loss_fn, custom_callback)
-        
-        # This would test the callback if we could run training
-        @test backend_custom.callback == custom_callback
+        # Test prediction with recovered parameters
+        test_input = (; u0 = result.ics[1].u0, saveat = tsteps, tspan = tspan)
+        pred, _ = model(test_input, result.ps, result.st)
+        @test size(pred) == size(data)
+        @test isapprox(pred, data, atol=1e-2, rtol=1e-2)  # Predictions should be close to data
     end
 end
