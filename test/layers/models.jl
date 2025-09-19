@@ -26,7 +26,7 @@ odemodel = ODEModel(layers,
 arstep(layers, u, ps, t) = layers.layer1(u, ps.layer1)
 armodel = ARModel(layers, arstep; tspan, saveat, dt = 0.1)
 
-fun(layers, u0, t0, ps, t) = u0 .* exp.(layers.layer1(u0, ps.layer1) .* (t .- t0))
+fun(layers, u0, t0, ps, t) = u0 .* exp.(layers.layer1(u0, ps.layer1) * (t - t0))
 analyticmodel = AnalyticModel(layers, fun; tspan, saveat)
 
 @testset "Dynamic model layers" begin

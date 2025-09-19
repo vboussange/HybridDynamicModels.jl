@@ -52,31 +52,6 @@ function forward(m::AnalyticModel, layers, u0, tspan, saveat, ps; kwargs...)
     t0 = first(tspan)
     
     # Evaluate the analytic function at specified time points
-    sol = m.fun(layers, u0, t0, ps, saveat)
-    
-    # Handle case where sol is not properly shaped
-    if isa(sol, AbstractVector) && !isa(saveat, Number)
-        # If sol is a vector but we have multiple time points, reshape appropriately
-        if length(saveat) > 1
-            if length(sol) == length(u0) * length(saveat)
-                sol = reshape(sol, length(u0), length(saveat))
-            elseif size(sol, 1) != length(u0)
-                # Transpose if needed
-                sol = sol'
-            end
-        else
-            # Single time point case
-            sol = reshape(sol, :, 1)
-        end
-    elseif isa(sol, Number)
-        # Single output case
-        sol = reshape([sol], 1, 1)
-    end
-    
-    # Ensure sol is an array with time as second dimension
-    if ndims(sol) == 1
-        sol = reshape(sol, :, 1)
-    end
-
-    return sol
+    sol_arr = m.fun.(Ref(layers), Ref(u0), Ref(t0), Ref(ps), saveat)
+    return reduce(hcat, sol_arr)
 end
