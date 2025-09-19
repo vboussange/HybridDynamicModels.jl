@@ -7,7 +7,7 @@ Wraps an analytic model for direct evaluation using LuxCore layers.
 ## Arguments
   - `layers`: NamedTuple of LuxCore layers representing the layers of the model.
   - `fun`: Function that computes the analytic solution, with signature `fun(layers, u0, t0, ps, t)`.
-  - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `t0`, `saveat`).
+  - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `tspan`, `saveat`).
 
 ## Inputs
 - (`x`, `ps`, `st`)
@@ -23,38 +23,34 @@ Wraps an analytic model for direct evaluation using LuxCore layers.
   - `st`: Updated states of the model.
 
 ## Behavior
-`layers` are wrapped in `StatefulLuxLayer` to maintain their states. The analytic function `fun` should be defined as `fun(layers, u0, t0, ps, t)` where `t` can be a vector of time points.
+`layers` are wrapped in `StatefulLuxLayer` to maintain their states. The analytic function `fun` should be defined as `fun(layers, u0, t0, ps, t)` where `t` can be a vector of time points and `t0` is extracted from `tspan`.
 
 ## Example
 
 ```jldoctest
 julia> layers = (; params = ParameterLayer(init_value = (a = 1.0, b = 0.5)))
 julia> analytic_solution(layers, u0, t0, ps, t) = u0 .* exp.(layers.params(ps.params)[1].a .* (t .- t0))
-julia> model = AnalyticModel(layers, analytic_solution)
-julia> ps, st = LuxCore.setup(Random.default_rng(), model)
-julia> model((; u0 = [1.0], t0 = 0.0, saveat = 0:0.1:1.0), ps, st)
+julia> model = AnalyticModel(layers, analytic_solution; u0 = [1.0], tspan = (0.0, 1.0), saveat = 0:0.1:1.0)
+julia> ps, st = Lux.setup(Random.default_rng(), model)
+julia> model((; u0 = [1.0]), ps, st)
 ```
 
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct AnalyticModel <: LuxCore.AbstractLuxWrapperLayer{:layers}
+@concrete struct AnalyticModel <: HybridDynamicModel
     layers<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
     fun # function that computes the analytic solution
-    kwargs
+    init_state <: Function
 end
 
-AnalyticModel(layers, fun; kwargs...) = AnalyticModel(layers, fun, NamedTuple(kwargs))
+function AnalyticModel(layers, fun; kwargs...)
+    AnalyticModel(layers, fun, () -> NamedTuple(kwargs))
+end
 
-function (m::AnalyticModel)(x::NamedTuple, ps, st)
-    u0 = hasproperty(x, :u0) ? getproperty(x, :u0) : getproperty(m.kwargs, :u0)
-    t0 = hasproperty(x, :t0) ? getproperty(x, :t0) : getproperty(m.kwargs, :t0, 0.0)
-    saveat = hasproperty(x, :saveat) ? getproperty(x, :saveat) : getproperty(m.kwargs, :saveat)
+function forward(m::AnalyticModel, layers, u0, tspan, saveat, ps; kwargs...)
+    t0 = first(tspan)
     
-    component_keys = keys(m.layers)
-    component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.layers, k), getproperty(ps, k), get_state(getproperty(st, k))), component_keys)
-    layers = NamedTuple{component_keys}(component_vals)
-
     # Evaluate the analytic function at specified time points
     sol = m.fun(layers, u0, t0, ps, saveat)
     
@@ -82,6 +78,5 @@ function (m::AnalyticModel)(x::NamedTuple, ps, st)
         sol = reshape(sol, :, 1)
     end
 
-    new_st = NamedTuple{component_keys}(map(k -> get_state(getproperty(layers, k)), component_keys))
-    return sol, new_st
+    return sol
 end

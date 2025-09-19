@@ -64,45 +64,33 @@ end
 function forward(m::ARModel, layers, u0, tspan, saveat, ps; dt)
     t0 = first(tspan)
     
-    # Initialize solution storage
-    n_steps = length(saveat)
-    n_vars = length(u0)
-    sol = zeros(eltype(u0), n_vars, n_steps)
-    
-    # Set initial condition
-    current_u = copy(u0)
-    current_t = t0
-    
-    # Find the index of the first save point
-    save_idx = 1
-    
-    # Store initial condition if t0 is in saveat
-    if saveat[1] ≈ t0
-        sol[:, save_idx] = current_u
-        save_idx += 1
-    end
-    
-    # Iterate through time
-    while save_idx <= n_steps
-        target_t = saveat[save_idx]
-        
-        # Step forward until we reach or exceed the target time
+    # Helper function to build solution immutably
+    function build_sol(current_u, current_t, remaining_saveat, sol_so_far)
+        if isempty(remaining_saveat)
+            return sol_so_far
+        end
+        target_t = first(remaining_saveat)
         while current_t < target_t
-            # Take a step (or partial step to land exactly on target)
             step_size = min(dt, target_t - current_t)
-            
-            # Apply the AR function
             next_u = m.fun(layers, current_u, ps, current_t)
-            
-            # Update state and time
             current_u = next_u
             current_t += step_size
         end
-        
-        # Store the result at the save point
-        sol[:, save_idx] = current_u
-        save_idx += 1
+        new_sol = (sol_so_far..., copy(current_u))
+        build_sol(current_u, current_t, remaining_saveat[2:end], new_sol)
     end
     
-    return sol
+    # Determine initial sol and remaining saveat
+    if !isempty(saveat) && saveat[1] ≈ t0
+        initial_sol = (copy(u0),)
+        remaining = saveat[2:end]
+    else
+        initial_sol = ()
+        remaining = saveat
+    end
+    
+    # Build the solution tuple
+    sol_tuple = build_sol(copy(u0), t0, remaining, initial_sol)
+    
+    return reduce(hcat, sol_tuple)
 end
