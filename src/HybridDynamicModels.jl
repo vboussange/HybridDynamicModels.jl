@@ -9,7 +9,7 @@ using DispatchDoctor: @stable
 export apply
 export SegmentedTimeSeries, tokenize, tokens
 export NoConstraint, BoxConstraint, NamedTupleConstraint
-export ParameterLayer
+export ParameterLayer, ICLayer
 export ICLayer, ODEModel, AnalyticModel, ARModel
 export BayesianLayer, getpriors
 export LogMSELoss, PoissonLoss
@@ -33,6 +33,7 @@ include("data.jl")
 include("constraints.jl")
 
 include("layers/utilities/parameter.jl")
+include("layers/utilities/initialconditions.jl")
 
 include("layers/models/model.jl")
 include("layers/models/odemodel.jl")

@@ -1,59 +1,9 @@
-using Bijectors, Distributions
 using HybridDynamicModels
-using Lux
-using Random
-using Test
 using DifferentiationInterface
 import ForwardDiff, Zygote
 using SciMLSensitivity
-using OrdinaryDiffEqTsit5
+using OrdinaryDiffEq
 using ComponentArrays
-
-######## Initial Conditions tests ########
-@testset "Initial Conditions" begin
-    lics = ICLayer(ParameterLayer(;init_value = (;u0 = rand(3),))) # initial conditions with no constraints
-    ps, st = Lux.setup(Random.default_rng(), lics)
-    ps = ComponentArray(ps)
-    u0, _, = Lux.apply(lics, (), ps, st) # expected to work, returns all initial conditions
-    @test hasproperty(u0, :u0)
-
-    initial_ics = [ParameterLayer(init_value = (;u0 = rand(10))) for _ in 1:5] # a should be in [0, 1], b has no constraints
-    lics = ICLayer(initial_ics)
-    ps, st = Lux.setup(Random.default_rng(), lics)
-    @test hasproperty(ps, :u0_1)
-    u0, _ = lics((u0 = 1,),  ps, st) # expected to work, returns intitial conditions associated to indices
-    @test hasproperty(u0, :u0)
-    # batch mode
-    u0s, _ = lics([(;u0 = 1,),(;u0 = 2,)],  ps, st) # expected to work, returns intitial conditions associated to indices
-    @test isa(u0s, AbstractVector)
-    @test length(u0s) == 2
-    @test hasproperty(u0s[1], :u0)
-
-    # Testing Chain
-    many_ics = Chain(lics)
-    ps, st = Lux.setup(Random.default_rng(), many_ics)
-    u0, _ = many_ics((u0 = 1,), ps, st)
-    @test hasproperty(u0, :u0)
-
-    # Testing frozen ics
-    lics_frozen = Lux.Experimental.FrozenLayer(ICLayer(initial_ics))
-    ps, st = Lux.setup(Random.default_rng(), lics_frozen)
-    u0, _ = lics_frozen((u0 = 1,), ps, st)
-    @test hasproperty(u0, :u0)
-    @test isempty(ps)
-
-    # testing Neural net
-    initial_ics = Dense(1, 10)
-    lics = ICLayer(initial_ics)
-    ps, st = Lux.setup(Random.default_rng(), lics)
-    u0, _ = Lux.apply(lics, (u0 = [1.],),  ps, st) # expected to work, returns intitial conditions associated to indices
-    @test hasproperty(u0, :u0)
-
-    # testing gradients
-    fun = ps -> sum(lics((;u0 = [1.],),ps, st)[1].u0)
-    grad = value_and_gradient(fun, AutoZygote(), ps)[2]
-    @test all(!isnothing(grad[k] for k in keys(grad)))
-end
 
 ######### ODEModel tests ########
 @testset "ODEModel" begin

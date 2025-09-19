@@ -5,7 +5,10 @@ using StableRNGs
 using DifferentiationInterface
 using Zygote
 using LuxCore
-
+using ComponentArrays
+using Lux
+using SciMLSensitivity
+using OrdinaryDiffEq
 
 @testset "HybridDynamicModels.jl" begin
     include("qa.jl")
@@ -16,6 +19,7 @@ using LuxCore
     # Layer tests
     @testset "Layer Utilities" begin
         include("layers/utilities/parameter.jl")
+        include("layers/utilities/initialconditions.jl")
     end
     
     @testset "Model Layers" begin
