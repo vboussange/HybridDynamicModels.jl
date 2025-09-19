@@ -24,15 +24,17 @@ include("train.jl")
 
 
 export SegmentedTimeSeries, tokenize, tokens
+export ParameterLayer
 export NoConstraint, BoxConstraint, NamedTupleConstraint
-export ParameterLayer, ICLayer
-export ICLayer, ODEModel, AnalyticModel, ARModel
-export BayesianLayer, getpriors
+export ODEModel, AnalyticModel, ARModel
+export ICLayer
 
 export train, InferICs
 
 export SGDBackend
+
 export MCSamplingBackend
+export BayesianLayer, getpriors
 # export VIBackend
 
 end

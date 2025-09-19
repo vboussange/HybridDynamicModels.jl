@@ -1,142 +1,267 @@
-#=
-Fitting initial conditions and parameters with the simple logistic model
-=#
+# # Learning Initial Conditions with HybridDynamicModels.jl
+#
+# This example demonstrates how to learn initial conditions (ICs) for time series segments
+# using the `ICLayer` in HybridDynamicModels.jl. This is useful when you have multiple
+# time series segments with unknown starting points.
 
-using OrdinaryDiffEq
-using Bijectors
-import Lux
-using Lux: MSELoss, Chain, Training
 using HybridDynamicModels
-using SciMLSensitivity
-using UnPack
+using Lux
+using Optimisers
+using OrdinaryDiffEq
 using Plots
-import Optimisers: Adam
 using Random
-using Test
 using ComponentArrays
 using Distributions
-import Turing: arraydist
+using Test
 
-const σ = 0.1
+# ## Step 1: Generate Synthetic Data with Multiple Segments
+#
+# We'll create data from a logistic growth model with different initial conditions
+# for different segments.
 
-function get_data()
-    function dudt(u, p, t)
-        @unpack b = p
-        return 0.1 .* u .* ( 1. .- b .* u) 
+# True ODE parameters
+r_true = 0.1
+K_true = 2.0
+p_true = (; r = r_true, K = K_true)
+
+# Logistic growth ODE
+function logistic_dudt(u, p, t)
+    r, K = p.r, p.K
+    return r * u * (1 - u / K)
+end
+
+# Generate multiple segments with different initial conditions
+function generate_segmented_data()
+    tsteps = 0.0:0.5:10.0
+    segments = []
+
+    # Different initial conditions for each segment
+    u0_values = [0.2, 0.5, 0.8, 1.2]
+
+    for u0 in u0_values
+        prob = ODEProblem(logistic_dudt, [u0], (tsteps[1], tsteps[end]), p_true)
+        sol = solve(prob, Tsit5(), saveat=tsteps, abstol=1e-6, reltol=1e-6)
+        data_clean = Array(sol)
+
+        # Add noise
+        noise_level = 0.05
+        rng = Random.MersenneTwister(42)
+        data_noisy = data_clean .* (1 .+ noise_level * randn(rng, size(data_clean)))
+
+        push!(segments, data_noisy)
     end
 
-    tsteps = 1.:1:100.
-    tspan = (tsteps[1], tsteps[end])
-
-    p_true = (;b = [0.23, 0.5],)
-    u0 = ones(2)
-    prob = ODEProblem(ODEFunction{false}(dudt), u0, tspan, p_true)
-    data = solve(prob, 
-                Tsit5(), 
-                saveat=tsteps,
-                abstol = 1e-6,
-                reltol = 1e-6,) |> Array
-    data_with_noise = rand(arraydist(LogNormal.(log.(data), σ)))
-    return data_with_noise, tsteps
+    return segments, tsteps
 end
-data_with_noise, tsteps = get_data()
-plot(tsteps, data_with_noise')
 
-batchsize = 1 #TODO: SegmentedTimeSeries should default to full batch
-dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
-                                segment_length = 20, 
+segments, tsteps = generate_segmented_data()
+
+println("Generated $(length(segments)) segments with different initial conditions")
+println("Time points per segment: $(length(tsteps))")
+
+# ## Step 2: Create SegmentedTimeSeries DataLoader
+#
+# Combine all segments into a single time series and create a segmented data loader.
+
+# Concatenate all segments
+all_data = hcat(segments...)
+all_times = repeat(tsteps, 1, length(segments))
+
+# Create data loader
+batchsize = 2
+dataloader = SegmentedTimeSeries((all_data, all_times);
+                                segment_length = 10,
                                 shift = 5,
-                                batchsize=batchsize)
+                                batchsize = batchsize)
 
-dataloader = tokenize(dataloader)
+# Tokenize for easier handling of segments
+tokenized_dataloader = tokenize(dataloader)
 
-ic_list = ParameterLayer[]
-for tok in tokens(dataloader)
-    segment_data, segment_tsteps = dataloader[tok]
-    u0 = segment_data[:, 1]
-    push!(ic_list, ParameterLayer(constraint = NoConstraint(), init_value = (;u0)))
+println("Created tokenized data loader with $(length(tokens(tokenized_dataloader))) segments")
+
+# ## Step 3: Set Up Initial Condition Layers
+#
+# Create an ICLayer with learnable initial conditions for each segment.
+
+# Create initial condition layers for each segment
+ic_layers = []
+for token in tokens(tokenized_dataloader)
+    segment_data, _ = tokenized_dataloader[token]
+    # Initialize ICs with small random values (different from true)
+    u0_init = 0.1 + 0.1 * rand(Random.MersenneTwister(token))
+    push!(ic_layers, ParameterLayer(
+        init_value = (; u0 = [u0_init]),
+        constraint = BoxConstraint([1e-3], [3.0])  # Positive constraint
+    ))
 end
 
-loss_fn = MSELoss() # TODO: change to a log loss
-# transform = Bijectors.NamedTransform((; b = bijector(Uniform(1e-3, 5e0))))
-params = ParameterLayer(constraint = NoConstraint(), 
-                        init_value = (;b = [1., 2.]))
+ic_layer = ICLayer(ic_layers)
 
-function dudt(layers, u, ps, t)
-    p = layers.params(ps.params)
-    @unpack b = p
-    return 0.1 .* u .* ( 1. .- b .* u) 
+# ## Step 4: Define the ODE Model
+#
+# Create an ODE model with fixed parameters (we'll learn ICs, not parameters).
+
+# Fixed parameters (known)
+param_layer = ParameterLayer(init_value = (; r = r_true, K = K_true))
+
+function dudt_model(layers, u, ps, t)
+    params = layers.params(ps.params)
+    r, K = params.r, params.K
+    return r * u * (1 - u / K)
 end
 
-ode_model = ODEModel((;params = params), 
-                    dudt,
-                    alg = BS3(),
-                    abstol = 1e-3,
-                    reltol = 1e-3,
-                    sensealg = ForwardDiffSensitivity()
-                    )
-ics = ICLayer(ic_list)
+ode_model = ODEModel(
+    (; params = param_layer),
+    dudt_model;
+    alg = Tsit5(),
+    abstol = 1e-6,
+    reltol = 1e-6
+)
 
-function feature_wrapper((token, tsteps_batch))
+# ## Step 5: Create Feature Wrapper
+#
+# Prepare inputs for the model from tokenized data.
+
+function feature_wrapper((tokens_batch, tsteps_batch))
     return [
-        (;u0 = token[i],
-        saveat = tsteps_batch[:, i], 
-        tspan = (tsteps_batch[1, i], tsteps_batch[end, i])
-        )
+        (; u0 = tokens_batch[i],
+          saveat = tsteps_batch[:, i],
+          tspan = (tsteps_batch[1, i], tsteps_batch[end, i]))
         for i in 1:batchsize
     ]
 end
 
-ode_model_with_ics = Chain(wrapper = Lux.WrappedFunction(feature_wrapper), initial_conditions = ics, model = ode_model)
-ps, st = Lux.setup(Random.default_rng(), ode_model_with_ics)
-ps = ComponentArray(ps)
+# ## Step 6: Build the Complete Model
+#
+# Chain the wrapper, IC layer, and ODE model.
 
-n_segments = length(tokens(dataloader))
-colors = [:blue, :red]
+model = Chain(
+    wrapper = Lux.WrappedFunction(feature_wrapper),
+    initial_conditions = ic_layer,
+    model = ode_model
+)
 
-function plot_segments(dataloader, ode_model_with_ics, ps, st)
+# ## Step 7: Set Up Training
+#
+# Use the high-level training API with IC inference enabled.
+
+backend = SGDBackend(
+    Adam(5e-3),       # Higher learning rate for ICs
+    300,              # More epochs for IC learning
+    Lux.AutoZygote(),
+    MSELoss()
+)
+
+# Enable initial condition inference
+infer_ics = InferICs(true)
+
+# ## Step 8: Train the Model
+#
+# Train to learn the initial conditions for each segment.
+
+println("Starting training to learn initial conditions...")
+result = train(backend, model, tokenized_dataloader, infer_ics)
+
+# ## Step 9: Analyze Learned Initial Conditions
+#
+# Compare learned ICs with true values.
+
+println("\nInitial Condition Recovery:")
+println("Segment | True IC | Learned IC | Error")
+println("-" ^ 40)
+
+learned_ics = []
+for (i, ic) in enumerate(result.ics)
+    learned_u0 = ic.u0[1]
+    true_u0 = segments[i][1]
+    error = abs(learned_u0 - true_u0)
+    rel_error = error / true_u0 * 100
+    println(@sprintf("%7d | %7.3f | %9.3f | %5.1f%%", i, true_u0, learned_u0, rel_error))
+    push!(learned_ics, learned_u0)
+end
+
+# ## Step 10: Visualize Results
+#
+# Plot the data segments and model predictions with learned ICs.
+
+function plot_results(dataloader, model, ps, st, segments, tsteps)
     plt = plot()
-    for (batched_tokens, (batched_segments, batched_tsteps)) in dataloader
 
-        batched_pred = ode_model_with_ics((batched_tokens, batched_tsteps), ps, st)[1]
-        for (tok, segment_tsteps, segment_data, pred) in zip(batched_tokens, 
-                                                            eachslice(batched_tsteps, dims=ndims(batched_tsteps)), 
-                                                            eachslice(batched_segments, dims=ndims(batched_segments)), 
-                                                            eachslice(batched_pred, dims=ndims(batched_pred)))
-            color = colors[mod1(tok, 2)]
-            plot!(plt, segment_tsteps, segment_data', label=(tok == 1 ? "Data" : ""), color=color, linestyle=:solid)
-            plot!(plt, segment_tsteps, pred', label=(tok == 1 ? "Predicted" : ""), color=color, linestyle=:dash)
+    colors = [:blue, :red, :green, :orange, :purple, :brown]
+
+    segment_idx = 1
+    for (tokens_batch, (data_batch, tsteps_batch)) in dataloader
+        preds = model((tokens_batch, tsteps_batch), ps, st)[1]
+
+        for i in 1:size(data_batch, 3)
+            color = colors[mod1(segment_idx, length(colors))]
+
+            # Plot data
+            plot!(plt, tsteps_batch[:, i], data_batch[:, 1, i],
+                  label = segment_idx == 1 ? "Data" : "",
+                  color = color, linewidth = 2)
+
+            # Plot predictions
+            plot!(plt, tsteps_batch[:, i], preds[:, 1, i],
+                  label = segment_idx == 1 ? "Learned IC Model" : "",
+                  color = color, linestyle = :dash, linewidth = 2)
+
+            # Mark learned initial condition
+            learned_ic = result.ics[segment_idx].u0[1]
+            scatter!(plt, [tsteps_batch[1, i]], [learned_ic],
+                    label = segment_idx == 1 ? "Learned IC" : "",
+                    color = color, markersize = 6, marker = :star)
+
+            segment_idx += 1
         end
     end
 
-    display(plt)
+    xlabel!(plt, "Time")
+    ylabel!(plt, "Population")
+    title!(plt, "Learning Initial Conditions for Multiple Segments")
+
     return plt
 end
 
-plot_segments(dataloader, ode_model_with_ics, ps, st)
+plt = plot_results(tokenized_dataloader, model, result.ps, result.st, segments, tsteps)
+display(plt)
 
-train_state = Training.TrainState(ode_model_with_ics, ps, st, Adam(1e-3))
+# ## Step 11: Test Generalization
+#
+# Test how well the learned ICs generalize to the full time series.
 
-n_epochs = 1000
-@time for epoch in 1:n_epochs
-    tot_loss = 0.
-    for (batched_tokens, (batched_segments, batched_tsteps)) in dataloader
-        # @show tokens
-        # @show size(segment_data)
-        _, loss, _, train_state = Training.single_train_step!(
-            Lux.AutoZygote(), 
-            loss_fn, 
-            ((batched_tokens, batched_tsteps), batched_segments),
-            train_state)
-        tot_loss += loss
+function plot_full_trajectories(segments, learned_ics, tsteps, p_true)
+    plt = plot()
+
+    colors = [:blue, :red, :green, :orange]
+
+    for (i, (segment, learned_ic)) in enumerate(zip(segments, learned_ics))
+        color = colors[mod1(i, length(colors))]
+
+        # Plot observed segment data
+        plot!(plt, tsteps, segment[:, 1],
+              label = "Segment $i Data",
+              color = color, linewidth = 2)
+
+        # Plot full trajectory starting from learned IC
+        extended_tsteps = 0.0:0.2:15.0
+        prob = ODEProblem(logistic_dudt, [learned_ic], (extended_tsteps[1], extended_tsteps[end]), p_true)
+        sol = solve(prob, Tsit5(), saveat=extended_tsteps)
+        plot!(plt, extended_tsteps, Array(sol)[:, 1],
+              label = "Segment $i Full Trajectory",
+              color = color, linestyle = :dash, linewidth = 2)
+
+        # Mark the learned IC
+        scatter!(plt, [tsteps[1]], [learned_ic],
+                color = color, markersize = 8, marker = :star)
     end
-    if epoch % 10 == 0
-        println("Epoch $epoch: Total Loss = ", tot_loss)
-        display(plot_segments(dataloader, ode_model_with_ics, train_state.parameters, st))
-    end
+
+    xlabel!(plt, "Time")
+    ylabel!(plt, "Population")
+    title!(plt, "Full Trajectories Using Learned Initial Conditions")
+
+    return plt
 end
-# approx 18 secs, converges after 10 its
 
-@test isapprox(params(train_state.parameters.model.params, (;))[1].b, p_true.b, rtol = 1e-2) # should be true
-
-plot_segments(dataloader, ode_model_with_ics, train_state.parameters, st)
+plt_full = plot_full_trajectories(segments, learned_ics, tsteps, p_true)
+display(plt_full)

@@ -1,137 +1,193 @@
-#=
-Fitting parameters only with the simple logistic model.
-=#
+# # Fitting ODE Parameters with HybridDynamicModels.jl
+#
+# This example demonstrates how to fit parameters in ordinary differential equations (ODEs)
+# using HybridDynamicModels.jl. We'll use a logistic growth model as an example.
 
-using OrdinaryDiffEq
-using Bijectors
-import Lux
-using Lux: MSELoss, Chain, Training
 using HybridDynamicModels
-using SciMLSensitivity
-using UnPack
+using Lux
+using Optimisers
+using OrdinaryDiffEq
 using Plots
-import Optimisers: Adam
 using Random
-using Printf
 using ComponentArrays
 using Test
 
-function dudt(u, p, t)
-    @unpack b = p
-    return 0.1 .* u .* ( 1. .- b .* u) 
+# ## Step 1: Define the True ODE Model
+#
+# We'll use the logistic growth equation: du/dt = r * u * (1 - u/K)
+# where r is the growth rate and K is the carrying capacity.
+
+# True parameters
+r_true = 0.1
+K_true = 2.0
+p_true = (; r = r_true, K = K_true)
+
+# Initial condition
+u0_true = [0.5]
+
+# Logistic growth ODE function
+function logistic_dudt(u, p, t)
+    r, K = p.r, p.K
+    return r * u * (1 - u / K)
 end
 
-tsteps = 1.:1:100.
-tspan = (tsteps[1], tsteps[end])
+# ## Step 2: Generate Synthetic Data
+#
+# Create time series data by solving the ODE with true parameters.
 
-p_true = (;b = [0.23, 0.5],)
-u0 = ones(2)
-prob = ODEProblem(ODEFunction{false}(dudt), u0, tspan, p_true)
-data = solve(prob, 
-            Tsit5(), 
-            saveat=tsteps,
-            abstol = 1e-6,
-            reltol = 1e-6,) |> Array
-data_with_noise = data .* exp.(0.1 .* randn(Random.MersenneTwister(1234), size(data)))
+# Time span and points
+tspan = (0.0, 20.0)
+tsteps = 0.0:0.5:20.0
 
-plot(tsteps, data_with_noise')
+# Solve the ODE
+prob = ODEProblem(logistic_dudt, u0_true, tspan, p_true)
+sol = solve(prob, Tsit5(), saveat=tsteps, abstol=1e-6, reltol=1e-6)
+data_clean = Array(sol)
 
-batchsize = 1
-dataloader = SegmentedTimeSeries((data_with_noise, tsteps), 
-                                segment_length = 20, 
-                                shift = 5, 
+# Add some noise to simulate real data
+rng = Random.MersenneTwister(42)
+noise_level = 0.05
+data_noisy = data_clean .* (1 .+ noise_level * randn(rng, size(data_clean)))
+
+println("Generated $(length(tsteps)) time points of logistic growth data")
+println("True parameters: r = $r_true, K = $K_true")
+
+# ## Step 3: Create Data Loader
+#
+# Use SegmentedTimeSeries to create mini-batches for training.
+
+batchsize = 2
+segment_length = 10
+
+dataloader = SegmentedTimeSeries((data_noisy, tsteps);
+                                segment_length = segment_length,
+                                shift = 5,
                                 batchsize = batchsize)
 
-# TODO: bijectors.NamedTransform only works for tuples, and not for ComponentArrays
-# Hence, when we convert ps = ComponentArray(ps) for compat with ODEModel, the transform fails
-# A quick fix is to use a simple Bijector, which applies to a vector, which is compatible with ComponentArrays
-# But ideall, we need to have something working with ComponentArrays
-loss_fn = MSELoss()
-transform = bijector(Uniform(1e-3, 5e0))
-params = ParameterLayer(constraint = Constraint(transform), 
-                        # constraint = NoConstraint(),
-                        init_value = ComponentArray(;b = [1., 2.])
-                        # init_value = ComponentArray(p_true),
-                        )
+println("Created data loader with $(length(dataloader)) batches")
 
-function dudt(layers, u, ps, t)
-    p = layers.params(ps.params)
-    @unpack b = p
-    return 0.1 .* u .* ( 1. .- b .* u) 
+# ## Step 4: Define the Hybrid ODE Model
+#
+# Create an ODEModel with learnable parameters.
+
+# Parameter layer with constraints (positive parameters)
+param_layer = ParameterLayer(
+    init_value = (; r = 0.05, K = 1.5),  # Initial guesses
+    constraint = BoxConstraint([1e-3, 1e-3], [1.0, 10.0])  # Bounds
+)
+
+# ODE function that uses the parameter layer
+function dudt_model(layers, u, ps, t)
+    params = layers.params(ps.params)
+    r, K = params.r, params.K
+    return r * u * (1 - u / K)
 end
 
-ode_model = ODEModel((;params = params), 
-                    dudt,
-                    alg = BS3(),
-                    abstol = 1e-3,
-                    reltol = 1e-3,
-                    u0 = u0,
-                    tspan = tspan,
-                    saveat = tsteps,
-                    sensealg = ForwardDiffSensitivity()
-                    )
+# Create the ODE model
+ode_model = ODEModel(
+    (; params = param_layer),
+    dudt_model;
+    alg = Tsit5(),
+    abstol = 1e-6,
+    reltol = 1e-6
+)
 
-ps, st = Lux.setup(Random.default_rng(), ode_model) 
-
-all(params(ps.params, (;))[1].b .≈ p_true.b) # should be true
+# ## Step 5: Create Feature Wrapper
+#
+# The feature wrapper prepares inputs for the ODE model from batched data.
 
 function feature_wrapper((batched_segments, tsteps_batch))
     return [
-        (;u0 = batched_segments[:, 1, i],
-        saveat = tsteps_batch[:, i], 
-        tspan = (tsteps_batch[1, i], tsteps_batch[end, i])
-        )
+        (; u0 = batched_segments[:, 1, i],
+          saveat = tsteps_batch[:, i],
+          tspan = (tsteps_batch[1, i], tsteps_batch[end, i]))
         for i in 1:batchsize
     ]
 end
 
-mychain = Chain(wrapper = Lux.WrappedFunction(feature_wrapper), model = ode_model)
-ps, st = Lux.setup(Random.default_rng(), mychain)
-all(params(ps.model.params, (;))[1].b .≈ p_true.b) # should be true
+# Combine wrapper and model
+model = Chain(
+    wrapper = Lux.WrappedFunction(feature_wrapper),
+    model = ode_model
+)
 
-colors = [:blue, :red]
+# ## Step 6: Set Up Training
+#
+# Configure the training backend and loss function.
 
-function plot_segments(dataloader, mychain, ps, st)
-    plt = plot()
-    tok = 1
-    for (batched_segments, batched_tsteps) in dataloader
+# Training backend
+backend = SGDBackend(
+    Adam(1e-3),      # Optimizer
+    200,             # Number of epochs
+    Lux.AutoZygote(), # AD backend
+    MSELoss()        # Loss function
+)
 
-        batched_pred = mychain((batched_segments, batched_tsteps), ps, st)[1]
+# ## Step 7: Train the Model
+#
+# Train using the high-level training API.
 
-        for (segment_tsteps, segment_data, pred) in zip(eachslice(batched_tsteps, dims=ndims(batched_tsteps)), 
-                                                                    eachslice(batched_segments, dims=ndims(batched_segments)), 
-                                                                    eachslice(batched_pred, dims=ndims(batched_pred)))
-            color = colors[mod1(tok, 2)]
-            plot!(plt, segment_tsteps, segment_data', label=(tok == 1 ? "Data" : ""), color=color, linestyle=:solid)
-            plot!(plt, segment_tsteps, pred', label=(tok == 1 ? "Predicted" : ""), color=color, linestyle=:dash)
-            tok += 1
-        end
-    end
-    return plt
+println("Starting training...")
+result = train(backend, model, dataloader, InferICs(false))
+
+# ## Step 8: Analyze Results
+#
+# Check how well we recovered the true parameters.
+
+learned_params = param_layer(result.ps.model.params, (;))
+println("\nParameter Recovery:")
+println("True r: $r_true, Learned r: $(learned_params.r)")
+println("True K: $K_true, Learned K: $(learned_params.K)")
+println("Relative error r: $(abs(learned_params.r - r_true)/r_true * 100)%")
+println("Relative error K: $(abs(learned_params.K - K_true)/K_true * 100)%")
+
+# ## Step 9: Visualize Results
+#
+# Plot the data and model predictions.
+
+# Function to make predictions with the trained model
+function predict_trajectory(model, ps, st, u0, tspan, tsteps)
+    input = (; u0 = u0, tspan = tspan, saveat = tsteps)
+    pred, _ = model.model(input, ps.model, st.model)
+    return pred
 end
 
-display(plot_segments(dataloader, mychain, ps, st))
+# Plot comparison
+plt = plot(tsteps, data_noisy', label="Noisy Data", color=:blue, linewidth=2)
+plot!(plt, tsteps, data_clean', label="True Solution", color=:red, linewidth=2, linestyle=:dash)
 
-ps = ComponentArray(ps)
-train_state = Training.TrainState(mychain, ps, st, Adam(1e-3))
+# Predict with learned parameters
+pred = predict_trajectory(model, result.ps, result.st, u0_true, tspan, tsteps)
+plot!(plt, tsteps, pred', label="Learned Model", color=:green, linewidth=2, linestyle=:dot)
 
-n_epochs = 1000
-for epoch in 1:n_epochs
-    tot_loss = 0.
-    for (batched_segments, batched_tsteps) in dataloader
-        _, loss, _, train_state = Training.single_train_step!(
-            Lux.AutoZygote(),
-            loss_fn, 
-            ((batched_segments, batched_tsteps), batched_segments),
-            train_state)
-        tot_loss += loss
-    end
-    if epoch % 10 == 0
-        println("Epoch $epoch: Total Loss = ", tot_loss)
-        display(plot_segments(dataloader, mychain, train_state.parameters, st))
-    end
+xlabel!(plt, "Time")
+ylabel!(plt, "Population")
+title!(plt, "Logistic Growth: Parameter Fitting Results")
+
+display(plt)
+
+# ## Step 10: Test on New Initial Conditions
+#
+# Test the learned model on different initial conditions.
+
+u0_test = [0.1, 0.8, 1.5]
+test_tspan = (0.0, 15.0)
+test_tsteps = 0.0:0.2:15.0
+
+plt_test = plot()
+for (i, u0) in enumerate(u0_test)
+    # True solution
+    prob_test = ODEProblem(logistic_dudt, [u0], test_tspan, p_true)
+    sol_test = solve(prob_test, Tsit5(), saveat=test_tsteps)
+    plot!(plt_test, test_tsteps, Array(sol_test)', label="True (u0=$u0)", color=i, linestyle=:solid)
+
+    # Learned model prediction
+    pred_test = predict_trajectory(model, result.ps, result.st, [u0], test_tspan, test_tsteps)
+    plot!(plt_test, test_tsteps, pred_test', label="Learned (u0=$u0)", color=i, linestyle=:dash)
 end
 
-@test isapprox(params(train_state.parameters.model.params, (;))[1].b, p_true.b, rtol = 1e-1) # should be true
+xlabel!(plt_test, "Time")
+ylabel!(plt_test, "Population")
+title!(plt_test, "Model Generalization to Different Initial Conditions")
 
-plot_segments(dataloader, mychain, train_state.parameters, st)
+display(plt_test)

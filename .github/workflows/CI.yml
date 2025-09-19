@@ -45,7 +45,6 @@ jobs:
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: MartinuzziFrancesco/LuxRecurrentLayers.jl
           fail_ci_if_error: false
   docs:
     name: Documentation
