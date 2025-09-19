@@ -7,7 +7,6 @@ import Lux: fmap
 import Functors: @leaf, fmap_with_path
 using ComponentArrays
 using ConcreteStructs: @concrete
-import HybridModelling: SegmentedTimeSeries
 import Turing
 
 @concrete struct MCMCBackend <: AbstractOptimBackend

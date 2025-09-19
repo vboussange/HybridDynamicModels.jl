@@ -5,38 +5,7 @@ function _default_callback(l, epoch, ts)
     end
 end
 
-"""
-    SGDBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
-
-Training backend relying on Lux.jl training API. Use for mode estimation.
-
-## Fields
-- `opt`: Optimizers.jl rule for parameter updates
-- `n_epochs`: Number of training epochs
-- `adtype`: Automatic differentiation backend from ADTypes.jl
-- `loss_fn`: Loss function for training
-- `callback`: User-defined callback function called each epoch
-
-## Arguments
-- `opt`: Optimization rule (e.g., `Adam(1e-3)`)
-- `n_epochs`: Total number of training epochs
-- `adtype`: AD backend (e.g., `AutoZygote()`, `AutoForwardDiff()`)
-- `loss_fn`: Loss function compatible with Lux training
-- `callback=(l::AbstractFloat, epoch::Int, ts::Lux.TrainingState)->nothing`: Called at each epoch. Refer to [Lux.Training.TrainState](https://lux.csail.mit.edu/stable/api/Lux/utilities#Training-API) for fields of `ts`.
-
-## Returns
-When provided to `train`, the function returns a named tuple with the following fields:
-- `ps`: The best model parameters found during training.
-- `st`: Associated states.
-- `ics`: A vector of named tuple where `ics[i].u0` contains estimated initial conditions for segment `i`, indexed with `ics[i].t0`
-
-## Example
-```julia
-backend = SGDBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
-result = train(backend, model, dataloader, infer_ics)
-```
-"""
-@concrete struct SGDBackend <: AbstractOptimBackend
+@concrete struct SGDBackend <: HybridDynamicModels.SGDBackend
     opt::Optimisers.AbstractRule
     n_epochs::Int
     adtype::ADTypes.AbstractADType
@@ -44,7 +13,7 @@ result = train(backend, model, dataloader, infer_ics)
     callback::Any
 end
 
-SGDBackend(opt, n_epochs, adtype, loss_fn) = SGDBackend(opt, n_epochs, adtype, loss_fn, _default_callback)
+HybridDynamicModels.SGDBackend(opt, n_epochs, adtype, loss_fn) = SGDBackend(opt, n_epochs, adtype, loss_fn, _default_callback)
 
 function _feature_wrapper((token, tsteps_batch))
     return [(; u0 = token[i],
@@ -75,10 +44,11 @@ function _get_ic_values(dataloader, ic_layer, ps, st)
     segment_ics = vcat(segment_ics...)
     return segment_ics
 end
+
 function train(backend::SGDBackend,
         model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
-        infer_ics::AbstractSetup,
+        infer_ics::InferICs,
         rng = Random.default_rng(),
         luxtype = Lux.f64)
 

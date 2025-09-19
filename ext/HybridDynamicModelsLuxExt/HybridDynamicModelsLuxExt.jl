@@ -5,7 +5,10 @@ import Optimisers
 import Lux: Training
 using ADTypes
 using ConcreteStructs: @concrete
-import HybridDynamicModels: SegmentedTimeSeries, AbstractOptimBackend, InferICs, AbstractSetup
+using HybridDynamicModels: HybridDynamicModels, 
+                            SegmentedTimeSeries, 
+                            AbstractOptimBackend,
+                            InferICs
 
 include("sgd_backend.jl")
 include("loss_fn.jl")

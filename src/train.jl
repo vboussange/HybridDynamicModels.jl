@@ -1,4 +1,45 @@
 abstract type AbstractOptimBackend end
+
+
+"""
+    SGDBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
+
+Training backend relying on Lux.jl training API. Use for mode estimation.
+
+## Fields
+- `opt`: Optimizers.jl rule for parameter updates
+- `n_epochs`: Number of training epochs
+- `adtype`: Automatic differentiation backend from ADTypes.jl
+- `loss_fn`: Loss function for training
+- `callback`: User-defined callback function called each epoch
+
+## Arguments
+- `opt`: Optimization rule (e.g., `Adam(1e-3)`)
+- `n_epochs`: Total number of training epochs
+- `adtype`: AD backend (e.g., `AutoZygote()`, `AutoForwardDiff()`)
+- `loss_fn`: Loss function compatible with Lux training
+- `callback=(l::AbstractFloat, epoch::Int, ts::Lux.TrainingState)->nothing`: Called at each epoch. Refer to [Lux.Training.TrainState](https://lux.csail.mit.edu/stable/api/Lux/utilities#Training-API) for fields of `ts`.
+
+## Returns
+When provided to `train`, the function returns a named tuple with the following fields:
+- `ps`: The best model parameters found during training.
+- `st`: Associated states.
+- `ics`: A vector of named tuple where `ics[i].u0` contains estimated initial conditions for segment `i`, indexed with `ics[i].t0`
+
+## Example
+```julia
+backend = SGDBackend(Adam(1e-3), 1000, AutoZygote(), MSELoss())
+result = train(backend, model, dataloader, infer_ics)
+```
+"""
+abstract type SGDBackend <: AbstractOptimBackend end
+
+
+abstract type MCSamplingBackend <: AbstractOptimBackend end
+
+
+abstract type VIBackend <: AbstractOptimBackend end
+
 abstract type AbstractSetup end
 
 """

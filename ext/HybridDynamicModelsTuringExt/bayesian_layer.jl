@@ -1,7 +1,3 @@
-using Distributions
-import Turing: arraydist
-import LuxCore
-
 """
     BayesianLayer(layer, priors)
 
@@ -42,29 +38,11 @@ bayesian_ode = BayesianLayer(ode_model, param_priors)
 priors = getpriors(bayesian_ode)
 ```
 """
-
-@concrete struct BayesianLayer <: LuxCore.AbstractLuxWrapperLayer{:layer}
-    layer <: LuxCore.AbstractLuxLayer
+@concrete struct BayesianLayer <: HybridDynamicModels.BayesianLayer
+    layers <: LuxCore.AbstractLuxLayer
     priors <: Union{Distributions.Distribution, NamedTuple}
 end
-
-# TODO: this may be an overkill, since it imposes to define initial parameter values
-# At the same time, if we do not do this, we need the user to exactly match the parameter shapes
-# function BayesianLayer(layer::L, priors::P) where {L <: AbstractLuxLayer, P <: Union{Distributions.Distribution, NamedTuple}}
-#     ps = Lux.initialparameters(Random.default_rng(), layer)
-#     if isa(priors, NamedTuple)
-#         @assert keys(priors) == keys(ps)
-#         @assert all(size(priors[k]) == size(ps[k]) for k in keys(priors))
-
-#     elseif isa(priors, MultivariateDistribution)
-#         @assert length(priors) == Lux.parameterlength(ps)
-#     end
-#     BayesianLayer{L, P}(layer, priors)
-# end
-
-# This is a required behavior for Layers with no tunable parameters
-# But since use case is marginal, we can also define it by hand
-# priors(::Union{AbstractLuxLayer,Nothing}) = (;)
+HybridDynamicModels.BayesianLayer(layer, priors) = BayesianLayer(layer, priors)
 
 """
     getpriors(layer)

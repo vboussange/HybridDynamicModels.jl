@@ -2,7 +2,6 @@ using ComponentArrays
 using Optimisers
 using ADTypes
 using ConcreteStructs: @concrete
-import HybridModelling: SegmentedTimeSeries
 
 function _default_callback(l, epoch, ts)
     if epoch % 10 == 0

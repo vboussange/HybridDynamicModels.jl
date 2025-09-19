@@ -5,7 +5,6 @@ version = "0.0.2-DEV"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
