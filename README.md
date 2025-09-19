@@ -1,8 +1,6 @@
 [![Build Status](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-<div align="center">
-    <img src="material/logo.svg" alt="HybridDynamicModels.jl" width="200">
-</div>
+![](docs/src/asssets/logo.svg)
 
 # HybridDynamicModels.jl
 
