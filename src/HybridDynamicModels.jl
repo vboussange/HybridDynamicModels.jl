@@ -1,7 +1,7 @@
 module HybridDynamicModels
 
 using LuxCore
-import LuxCore.StatefulLuxLayerImpl: get_state
+import LuxCore.StatefulLuxLayerImpl: get_state, set_state!
 using Random
 using ConcreteStructs: @concrete
 using DiffEqBase

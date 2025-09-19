@@ -6,7 +6,7 @@ Wraps an autoregressive (AR) model for iterative time series prediction using Lu
 ## Arguments
   - `layers`: NamedTuple of Lux layers representing the layers of the model.
   - `fun`: Function that computes the next time step, with signature `fun(layers, u, ps, t)`.
-  - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `t0`, `saveat`, `dt`).
+  - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `tspan`, `saveat`, `dt`).
 
 ## Inputs
 - (`x`, `ps`, `st`)
@@ -37,9 +37,9 @@ julia> layers = (;
            params = ParameterLayer(init_value = (decay = 0.95,))
        )
 julia> ar_step(layers, u, ps, t) = layers.predictor(u, ps.predictor) .* layers.params(ps.params)[1].decay
-julia> model = ARModel(layers, ar_step; dt = 0.1)
+julia> model = ARModel(layers, ar_step; dt = 0.1, u0 = [1.0, 0.5], tspan = (0.0, 1.0), saveat = 0:0.1:1.0)
 julia> ps, st = Lux.setup(Random.default_rng(), model)
-julia> model((; u0 = [1.0, 0.5], t0 = 0.0, saveat = 0:0.1:1.0), ps, st)
+julia> model((; u0 = [1.0, 0.5]), ps, st)
 ```
 
 ## Use Cases
@@ -51,24 +51,19 @@ julia> model((; u0 = [1.0, 0.5], t0 = 0.0, saveat = 0:0.1:1.0), ps, st)
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct ARModel <: HybridDynamicModelsWrapperLayer
+@concrete struct ARModel <: HybridDynamicModel
     layers<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
     fun # function that computes the next time step
-    kwargs
+    init_state <: Function
 end
 
-ARModel(layers, fun; kwargs...) = ARModel(layers, fun, NamedTuple(kwargs))
+function ARModel(layers, fun; kwargs...)
+    ARModel(layers, fun, () -> NamedTuple(kwargs))
+end
 
-function (m::ARModel)(x::NamedTuple, ps, st)
-    u0 = hasproperty(x, :u0) ? getproperty(x, :u0) : getproperty(m.kwargs, :u0)
-    t0 = hasproperty(x, :t0) ? getproperty(x, :t0) : getproperty(m.kwargs, :t0, 0.0)
-    saveat = hasproperty(x, :saveat) ? getproperty(x, :saveat) : getproperty(m.kwargs, :saveat)
-    dt = hasproperty(x, :dt) ? getproperty(x, :dt) : getproperty(m.kwargs, :dt, 1.0)
+function forward(m::ARModel, layers, u0, tspan, saveat, ps; dt)
+    t0 = first(tspan)
     
-    layer_keys = keys(m.layers)
-    layer_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.layers, k), getproperty(ps, k), get_state(getproperty(st, k))), layer_keys)
-    layers = NamedTuple{layer_keys}(layer_vals)
-
     # Initialize solution storage
     n_steps = length(saveat)
     n_vars = length(u0)
@@ -109,6 +104,5 @@ function (m::ARModel)(x::NamedTuple, ps, st)
         save_idx += 1
     end
     
-    new_st = NamedTuple{layer_keys}(map(k -> get_state(getproperty(layers, k)), layer_keys))
-    return sol, new_st
+    return sol
 end
