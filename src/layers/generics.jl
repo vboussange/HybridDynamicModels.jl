@@ -1,8 +1,7 @@
-abstract type AbstractDynamicalModel  <: LuxCore.AbstractLuxWrapperLayer{:layers} end
-
+abstract type HybridDynamicModelsLayer  <: LuxCore.AbstractLuxWrapperLayer{:layers} end
 
 # Handling batches
-function (m::AbstractDynamicalModel)(x::AbstractVector{<:NamedTuple}, ps, st)
+function (m::HybridDynamicModelsLayer)(x::AbstractVector{<:NamedTuple}, ps, st)
     function step(acc, xi)
         sols, curr_st = acc
         sol, new_st = m(xi, ps, curr_st)
@@ -17,4 +16,4 @@ function (m::AbstractDynamicalModel)(x::AbstractVector{<:NamedTuple}, ps, st)
 end
 
 
-(m::AbstractDynamicalModel)(ps, st) = m(NamedTuple(), ps, st)
+(m::HybridDynamicModelsLayer)(ps, st) = m(NamedTuple(), ps, st)

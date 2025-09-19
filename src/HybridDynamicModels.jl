@@ -1,6 +1,7 @@
 module HybridDynamicModels
 
 using LuxCore
+import LuxCore.StatefulLuxLayerImpl: get_state
 using Random
 using ConcreteStructs: @concrete
 using DiffEqBase
@@ -32,10 +33,11 @@ end
 include("data.jl")
 include("constraints.jl")
 
+include("layers/generics.jl")
+
 include("layers/utilities/parameter.jl")
 include("layers/utilities/initialconditions.jl")
 
-include("layers/models/model.jl")
 include("layers/models/odemodel.jl")
 include("layers/models/analyticmodel.jl")
 include("layers/models/armodel.jl")

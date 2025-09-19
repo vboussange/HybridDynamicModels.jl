@@ -16,7 +16,6 @@ using OrdinaryDiffEq
     include("data.jl")
     include("constraints.jl")
     
-    # Layer tests
     @testset "Layer Utilities" begin
         include("layers/utilities/parameter.jl")
         include("layers/utilities/initialconditions.jl")

@@ -37,27 +37,35 @@ julia> ode_model((; u0 = ones(Float32, 10)), ps, st)
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct ODEModel <: AbstractDynamicalModel
+@concrete struct ODEModel <: HybridDynamicModelsLayer
     layers<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
     dudt # function that computes the derivative
-    kwargs
+    init_state <: Function
 end
 
-ODEModel(layers, dudt; kwargs...) = ODEModel(layers, dudt, NamedTuple(kwargs))
+function ODEModel(layers, dudt; kwargs...)
+  ODEModel(layers, dudt, () -> NamedTuple(kwargs))
+end
+
+function LuxCore.initialstates(rng::AbstractRNG, m::ODEModel)
+    st = LuxCore.initialstates(rng, m.layers)
+    st = merge(st, (; kwargs = m.init_state()))
+    return st
+end
 
 function (m::ODEModel)(x::NamedTuple, ps, st)
-    u0 = hasproperty(x, :u0) ? getproperty(x, :u0) : getproperty(m.kwargs, :u0)
-    tspan = hasproperty(x, :tspan) ? getproperty(x, :tspan) : getproperty(m.kwargs, :tspan)
-    saveat = hasproperty(x, :saveat) ? getproperty(x, :saveat) : getproperty(m.kwargs, :saveat)
+    u0 = hasproperty(x, :u0) ? getproperty(x, :u0) : getproperty(st.kwargs, :u0)
+    tspan = hasproperty(x, :tspan) ? getproperty(x, :tspan) : getproperty(st.kwargs, :tspan)
+    saveat = hasproperty(x, :saveat) ? getproperty(x, :saveat) : getproperty(st.kwargs, :saveat)
     component_keys = keys(m.layers)
-    component_vals = map(k -> StatefulLuxLayer{true}(getproperty(m.layers, k), getproperty(ps, k), get_state(getproperty(st, k))), component_keys)
+    component_vals = map(k -> LuxCore.StatefulLuxLayer{true}(getproperty(m.layers, k), getproperty(ps, k), get_state(getproperty(st, k))), component_keys)
     layers = NamedTuple{component_keys}(component_vals)
 
     # Remove :u0, :p, and :tspan from x if present, so that when x and kwargs
     # are passed to `solve`, they don't overwrite values in prob see
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
-    # kwargs = merge(m.kwargs, x) # overwriting kwargs with x
-    kwargs = Base.structdiff(m.kwargs, NamedTuple{(:u0, :p, :tspan, :saveat)}) # keep kwargs that are not in x
+    # kwargs = merge(st.kwargs, x) # overwriting kwargs with x
+    kwargs = Base.structdiff(st.kwargs, NamedTuple{(:u0, :p, :tspan, :saveat)}) # keep kwargs that are not in x
 
     function __dudt(u, p, t)
         m.dudt(layers, u, p, t)

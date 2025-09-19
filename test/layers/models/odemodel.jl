@@ -1,12 +1,16 @@
 using HybridDynamicModels
 using DifferentiationInterface
-import ForwardDiff, Zygote
+import Zygote
 using SciMLSensitivity
 using OrdinaryDiffEq
 using ComponentArrays
+using Lux
+using StableRNGs
+using Test
 
-######### ODEModel tests ########
 @testset "ODEModel" begin
+    rng = StableRNG(42)
+
     layers = (; layer1 = Lux.Dense(10, 10, relu))
     dudt(layers, u, ps, t) = layers.layer1(u, ps.layer1)
     ode_model = ODEModel(layers, 
@@ -17,9 +21,9 @@ using ComponentArrays
                         abstol = 1f-6,
                         reltol = 1f-6,
                         sensealg = BacksolveAdjoint(autojacvec=ReverseDiffVJP(true)))
-    ps, st = Lux.setup(Random.default_rng(), ode_model)
+    ps, st = Lux.setup(rng, ode_model)
     ps = ComponentArray(ps)
-    @testset "No chain" begin
+    @testset "ICs in states" begin
         u0 = (;u0 = ones(Float32, 10))
         @testset "Forward pass" begin
             ys = ode_model(u0, ps, st)[1]
@@ -34,11 +38,9 @@ using ComponentArrays
         end
     end
 
-    @testset "Neural net as initial conditions" begin
-        # Neural net as initial conditions
+    @testset "Neural net as ICLayer" begin
         initial_ics = Dense(1, 10)
         lics = ICLayer(initial_ics)
-        rng = MersenneTwister(1234)
         model_with_ics = Chain(lics, ode_model)
         ps, st = Lux.setup(rng, model_with_ics)
         ps = ComponentArray(ps)
