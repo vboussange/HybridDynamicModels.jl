@@ -1,7 +1,7 @@
-using HybridDynamicModels
 using Test
 using Random
-using Lux
+using Lux, Optimisers
+using HybridDynamicModels
 using ComponentArrays
 using Optimisers
 using DifferentiationInterface
