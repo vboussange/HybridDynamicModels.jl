@@ -1,11 +1,11 @@
-@concrete struct MCSamplingBackend <: AbstractOptimBackend
+@concrete struct MCSamplingBackend <: HybridDynamicModels.MCSamplingBackend
     sampler::Any
     n_iterations::Int
     datadistrib::Any
     kwargs::Any
 end
 
-function MCSamplingBackend(sampler,
+function HybridDynamicModels.MCSamplingBackend(sampler,
         n_iterations,
         datadistrib,
         ; kwargs...)
@@ -67,10 +67,10 @@ function create_turing_model(ps_priors, data_distrib, st_model)
     return (xs, ys) -> DynamicPPL.Model(generated_model, (; xs, ys))
 end
 
-function train(backend::MCSamplingBackend,
+function HybridDynamicModels.train(backend::MCSamplingBackend,
         model::LuxCore.AbstractLuxLayer,
         dataloader::SegmentedTimeSeries,
-        infer_ics::AbstractSetup,
+        infer_ics::InferICs,
         rng = Random.default_rng())
 
     dataloader = tokenize(dataloader)
@@ -88,7 +88,7 @@ function train(backend::MCSamplingBackend,
         push!(ys, segment_data)
         push!(ic_list, ParameterLayer(init_value = (; u0)))
     end
-    if is_ics_estimated(experimental_setup)
+    if is_ics_estimated(infer_ics)
         bics = []
         for ic in ic_list
             ps, st = LuxCore.setup(rng, ic)
@@ -103,7 +103,7 @@ function train(backend::MCSamplingBackend,
     end
 
     ode_model_with_ics = Chain(initial_conditions = ics, model = model)
-    priors = getpriors(ode_model_with_ics)
+    priors = HybridDynamicModels.getpriors(ode_model_with_ics)
 
     ps_init, st = LuxCore.setup(rng, ode_model_with_ics)
     st_model = LuxCore.StatefulLuxLayer{true}(ode_model_with_ics, ps_init, st)

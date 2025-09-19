@@ -1,150 +1,98 @@
+using Turing, Lux, ComponentArrays, Distributions
 using HybridDynamicModels
+import HybridDynamicModels: is_ics_estimated, getpriors
+using StableRNGs
 using Test
-using Random
-using Turing
-using Lux
-using ComponentArrays
-using Distributions
-using Bijectors
 
-# Include the bayesian layer tests
-include("bayesian_layer.jl")
+function get_parameter_error(st_model, chain, p_true, nsamples = 100)
+    nsamples = min(nsamples, size(chain, 1))
+    posterior_samples = sample(st_model, chain, nsamples; replace = false)
+    err = []
+    for ps in posterior_samples
+        ps = ps.model.params
+        med_par_err = median([median(abs.(ps[k] - p_true[k]) ./ p_true[k])
+                              for k in keys(ps)])
+        push!(err, med_par_err)
+    end
+    return median(err)
+end
 
-@testset "HybridDynamicModelsTuringExt Tests" begin
-    @testset "MCSamplingBackend" begin
-        rng = Random.default_rng()
-        
-        # Create a simple model
-        model = Dense(2, 1)
-        
-        # Create mock dataloader
-        data1 = rand(rng, 2, 10)
-        tsteps1 = collect(0.0:0.1:0.9)
-        data2 = rand(rng, 2, 10)
-        tsteps2 = collect(0.0:0.1:0.9)
-        
-        struct MockSegmentedTimeSeries
-            data::Dict{Any, Tuple{Matrix{Float64}, Vector{Float64}}}
-        end
-        
-        function tokenize(d::MockSegmentedTimeSeries)
-            return d
-        end
-        
-        function tokens(d::MockSegmentedTimeSeries)
-            return keys(d.data)
-        end
-        
-        Base.getindex(d::MockSegmentedTimeSeries, key) = d.data[key]
-        
-        dataloader = MockSegmentedTimeSeries(Dict(
-            1 => (data1, tsteps1),
-            2 => (data2, tsteps2)
-        ))
-        
-        # Create backend
-        sampler = NUTS()
-        n_iterations = 10
-        datadistrib = Normal
-        backend = MCSamplingBackend(sampler, n_iterations, datadistrib)
-        
-        # Mock experimental setup
-        struct MockInferICs <: AbstractSetup
-            estimate_ics::Bool
-        end
-        
-        function is_ics_estimated(s::MockInferICs)
-            return s.estimate_ics
-        end
-        
-        infer_ics = MockInferICs(false)
-        
-        # Test backend creation
-        @test backend.sampler == sampler
-        @test backend.n_iterations == n_iterations
-        @test backend.datadistrib == datadistrib
-        
-        # Test training (may fail due to mocking, but tests structure)
-        try
-            result = train(backend, model, dataloader, infer_ics, rng)
-            @test haskey(result, :chains)
-            @test haskey(result, :st_model)
-            @test haskey(result, :ics)
-        catch e
-            @test e isa Exception
-        end
+@testset "BayesianLayer" begin
+    rng = StableRNG(1234)
+
+    nn1 = BayesianLayer(Dense(10, 5), Normal(0, 1))
+    prior_distrib = getpriors(nn1)
+    ps_nn1 = Lux.initialparameters(rng, nn1)
+    @test keys(prior_distrib) == keys(ps_nn1)
+    @test Lux.parameterlength(rand(Distributions.ProductNamedTupleDistribution(prior_distrib))) ==
+          Lux.parameterlength(ps_nn1)
+
+    nn2 = BayesianLayer(Dense(5, 2), Normal(0, 1))
+    parameters = ParameterLayer(init_value = (; a = [1.0, 2.0]))
+    bayes_param_layer = BayesianLayer(
+        parameters, (; a = arraydist(fill(Normal(0, 1.0), 2))))
+    ch = Chain(nn1, nn2, bayes_param_layer)
+    @test getpriors(ch) == (layer_1 = getpriors(nn1), layer_2 = getpriors(nn2),
+        layer_3 = getpriors(bayes_param_layer))
+end
+
+@testset "MCSamplingBackend, IC inference: $(is_ics_estimated(infer_ics))" for infer_ics in (
+    InferICs(false), InferICs(true))
+    rng = StableRNG(1234)
+
+    # Define logistic growth model parameters (ground truth)
+    K_true = [10.0]  # carrying capacity
+    r_true = [1.5]   # growth rate
+    N0_true = [1.0] # initial population
+
+    # Define the analytic logistic function
+    function logistic_solution(layers, u0, t0, ps, t)
+        # Extract parameters
+        params = layers.params(ps.params)
+        K = params.K
+        r = params.r
+
+        # Logistic growth solution: N(t) = K / (1 + (K/N0 - 1)*exp(-r*t))
+        return @. K / (1 + (K / u0 - 1) * exp(-r * (t - t0)))
     end
-    
-    @testset "VIBackend" begin
-        rng = Random.default_rng()
-        
-        # Create a simple model
-        model = Dense(2, 1)
-        
-        # Create mock dataloader
-        data1 = rand(rng, 2, 10)
-        tsteps1 = collect(0.0:0.1:0.9)
-        data2 = rand(rng, 2, 10)
-        tsteps2 = collect(0.0:0.1:0.9)
-        
-        struct MockSegmentedTimeSeries
-            data::Dict{Any, Tuple{Matrix{Float64}, Vector{Float64}}}
-        end
-        
-        function tokenize(d::MockSegmentedTimeSeries)
-            return d
-        end
-        
-        function tokens(d::MockSegmentedTimeSeries)
-            return keys(d.data)
-        end
-        
-        Base.getindex(d::MockSegmentedTimeSeries, key) = d.data[key]
-        
-        dataloader = MockSegmentedTimeSeries(Dict(
-            1 => (data1, tsteps1),
-            2 => (data2, tsteps2)
-        ))
-        
-        # Create backend
-        backend = VIBackend()
-        
-        # Mock experimental setup
-        struct MockInferICs <: AbstractSetup
-            estimate_ics::Bool
-        end
-        
-        function is_ics_estimated(s::MockInferICs)
-            return s.estimate_ics
-        end
-        
-        infer_ics = MockInferICs(false)
-        
-        # Test training with VI (may fail due to incomplete setup, but tests structure)
-        try
-            result = train(backend, model, dataloader, infer_ics; 
-                          rng=rng, n_iterations=10)
-            @test haskey(result, :q_avg)
-            @test haskey(result, :q_last)
-            @test haskey(result, :info)
-            @test haskey(result, :state)
-        catch e
-            @test e isa Exception
-        end
-    end
-    
-    @testset "Helper Functions" begin
-        # Test _vector_to_parameters
-        ps = (layer1 = (weight = rand(2, 3), bias = rand(2)), layer2 = rand(1))
-        ps_vec = Lux.parameterlength(ps)
-        vec_params = rand(ps_vec)
-        
-        reconstructed = HybridDynamicModels._vector_to_parameters(vec_params, ps)
-        @test reconstructed isa NamedTuple
-        @test Lux.parameterlength(reconstructed) == ps_vec
-        
-        # Test create_turing_model structure
-        # This is complex to test fully without full setup
-        @test true  # Placeholder for more detailed tests
-    end
+
+    p_true = (; K = K_true, r = r_true)
+
+    # Create the model
+    tspan = (0.0, 5.0)
+    tsteps = collect(0.0:0.1:5.0)
+
+    param_priors = (; K = product_distribution([Uniform(5.0, 15.0)]),
+        r = product_distribution([Uniform(0.1, 3.0)]))
+    layers = (; params = BayesianLayer(ParameterLayer(), param_priors))
+
+    model = AnalyticModel(layers, logistic_solution)
+    ps, st = Lux.setup(rng, model)
+
+    # Generate true trajectory
+    ps_true = (; params = (; K = K_true, r = r_true))
+    data = model((; u0 = N0_true, saveat = tsteps, tspan), ps_true, st)[1]
+    # data .+= 0.2 * randn(rng, size(data))  # Add some noise
+
+    # Create SegmentedTimeSeries with segment_length = 5
+    dataloader = SegmentedTimeSeries((data, tsteps);
+        segment_length = 5,
+        batchsize = 1,
+        partial_segment = true)
+    datadistrib = x -> Normal(x, 0.1)
+
+    # Create backend
+    sampler = NUTS(; adtype = AutoForwardDiff()) # fastest, by far
+    backend = MCSamplingBackend(sampler, 1000, datadistrib)
+
+    # Train the model
+    result = train(backend, model, dataloader, infer_ics, rng)
+
+    # Test that the result has expected structure
+    @test haskey(result, :chains)
+    @test haskey(result, :ics)
+    @test haskey(result, :st_model)
+
+    err = get_parameter_error(result.st_model, result.chains, p_true)
+    @test err < 0.1  # Median parameter error should be less than 10%
 end

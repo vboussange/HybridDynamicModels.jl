@@ -20,7 +20,7 @@
 - **`ARModel`**: Autoregressive models
 - **`AnalyticModel`**: For explicit dynamical models
 
-### **Utility layers for hybrid modelling**
+### **Utility layers for hybrid modeling**
 - **`ParameterLayer`**: Learnable parameters, composable with optional `Constraint` layers
 - **`BayesianLayer`**: Add probabilistic priors to any Lux layer
 

@@ -7,7 +7,6 @@ using ADTypes
 using ConcreteStructs: @concrete
 using HybridDynamicModels: HybridDynamicModels,
                            SegmentedTimeSeries,
-                           AbstractOptimBackend,
                            InferICs,
                            tokenize,
                            tokens,
