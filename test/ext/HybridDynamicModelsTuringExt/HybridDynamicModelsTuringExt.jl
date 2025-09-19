@@ -93,6 +93,7 @@ end
     @test haskey(result, :ics)
     @test haskey(result, :st_model)
 
+    # Turing.sample is implicitly tested when calling `get_parameter_error`
     err = get_parameter_error(result.st_model, result.chains, p_true)
     @test err < 0.1  # Median parameter error should be less than 10%
 end

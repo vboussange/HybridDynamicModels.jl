@@ -79,7 +79,8 @@ priors = getpriors(model)  # Automatically used by MCMC training
 """
 HybridDynamicModels.getpriors(l::BayesianLayer{L, P}) where {L, P <: NamedTuple} = l.priors
 
-function HybridDynamicModels.getpriors(l::BayesianLayer{L, D}) where {L, D<:Distributions.Distribution}
+function HybridDynamicModels.getpriors(l::BayesianLayer{
+        L, D}) where {L, D <: Distributions.Distribution}
     ps = LuxCore.initialparameters(Random.default_rng(), l)
     if isa(l.priors, UnivariateDistribution)
         distrib = []
@@ -111,10 +112,12 @@ end
 
 function HybridDynamicModels.getpriors(l)
     LuxCore.contains_lux_layer(l) || throw(MethodError(HybridDynamicModels.getpriors, l))
-    return LuxCore.Internal.fmap(HybridDynamicModels.getpriors, l; exclude=LuxCore.Internal.isleaf)
+    return LuxCore.Internal.fmap(
+        HybridDynamicModels.getpriors, l; exclude = LuxCore.Internal.isleaf)
 end
 
-function Turing.sample(rng::Random.AbstractRNG, model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
+function Turing.sample(rng::Random.AbstractRNG,
+        model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
         chain::Turing.MCMCChains.Chains, args...; kwargs...)
     priors = HybridDynamicModels.getpriors(model)
     posterior_samples = sample(rng, chain, args...; kwargs...)
