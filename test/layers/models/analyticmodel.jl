@@ -7,12 +7,13 @@ using DifferentiationInterface
 import ForwardDiff, Zygote
 
 @testset "AnalyticModel Tests" begin
-    
+    rng = StableRNG(1234)
+
     @testset "Basic AnalyticModel functionality" begin
         # Create a simple analytic model with polynomial dynamics
         layers = (;
             linear = Dense(2, 2),
-            params = ParameterLayer(init_value = (a = 1.0, b = 0.5))
+            params = ParameterLayer(init_value = (a = [1.0], b = [0.5]))
         )
         
         function analytic_solution(layers, u0, ps, t)
@@ -25,12 +26,11 @@ import ForwardDiff, Zygote
         model = AnalyticModel(layers, analytic_solution)
         
         # Test setup
-        rng = Random.default_rng()
         ps, st = Lux.setup(rng, model)
         
         # Test forward pass
         x = (u0 = [1.0, 0.5], t = 0.5)
-        sol, new_st = model(x, ps, st)
+        sol, _ = model(x, ps, st)
         
         @test length(sol) == 2  # 2 variables
         @test all(isfinite.(sol))  # All values should be finite

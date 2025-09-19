@@ -1,1 +1,1 @@
-abstract type BayesianLayer <: HybridDynamicModelsLayer end
+abstract type BayesianLayer <: HybridDynamicModelsWrapperLayer end

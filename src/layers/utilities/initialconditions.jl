@@ -23,7 +23,7 @@ Initial condition layer.
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct ICLayer <: HybridDynamicModelsLayer
+@concrete struct ICLayer <: HybridDynamicModelsWrapperLayer
     layers
 end
 

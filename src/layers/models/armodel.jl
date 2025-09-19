@@ -51,7 +51,7 @@ julia> model((; u0 = [1.0, 0.5], t0 = 0.0, saveat = 0:0.1:1.0), ps, st)
 !!!warning
     Undefined behavior when `ps` is not a NamedTuple
 """
-@concrete struct ARModel <: HybridDynamicModelsLayer
+@concrete struct ARModel <: HybridDynamicModelsWrapperLayer
     layers<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}
     fun # function that computes the next time step
     kwargs

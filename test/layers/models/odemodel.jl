@@ -87,7 +87,7 @@ using Test
         lics = ICLayer(initial_ics)
 
         model_with_ics = Chain(lics, ode_model)
-        ps, st = Lux.setup(Random.default_rng(), model_with_ics)
+        ps, st = Lux.setup(rng, model_with_ics)
         ps = ComponentArray(ps)
 
         # forward pass
