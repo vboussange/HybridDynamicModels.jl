@@ -1,3 +1,7 @@
 /Manifest*.toml
 /test/Manifest*.toml
 /docs/Manifest*.toml
+.vscode/*
+
+**/docs/build/
+**/docs/src/index.md

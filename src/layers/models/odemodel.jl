@@ -22,13 +22,13 @@ Wraps an ODE model for simulation using Lux layers.
   - `st`: Updated states of the model.
 
 ## Behavior
-`layers` are wrapped in `StatefulLuxLayer`s to maintain their states. Hence, if `layers = (; layer1 = Lux.Dense(10, 10, relu))`, then `dudt` should be defined as `dudt(layers, ps, u, t) = layers.layer1(u, ps.layer1)`.
+`layers` are wrapped in `StatefulLuxLayer`s to maintain their states. The derivative function `dudt` should be defined as `dudt(layers, u, ps, t)` where `u` is the current state and `t` is the current time. The function returns the derivative of the state.
 
 ## Example
 
 ```jldoctest
 julia> layers = (; layer1 = Lux.Dense(10, 10, relu))
-julia> dudt(layers, ps, st, u, t) = layers.layer1(u, ps.layer1)[1]
+julia> dudt(layers, u, ps, t) = layers.layer1(u, ps.layer1)[1]
 julia> ode_model = ODEModel(layers, dudt, tspan = (0f0, 1f0), saveat = range(0f0, stop=1f0, length=100), alg = Tsit5())
 julia> ps, st = Lux.setup(Random.default_rng(), ode_model)
 julia> ode_model((; u0 = ones(Float32, 10)), ps, st)

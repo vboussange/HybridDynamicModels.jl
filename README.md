@@ -145,17 +145,9 @@ end
 ## 📚 Documentation
 ### Examples
 TO COMPLETE
-<!-- - **[Scientific Models](examples/)**: Population dynamics, chemical kinetics, epidemiology
-- **[Neural ODEs](examples/neural_ode.jl)**: Pure and hybrid neural differential equations
-- **[Bayesian Inference](examples/bayesian.jl)**: Uncertainty quantification workflows
-- **[Parameter Estimation](examples/parameter_estimation.jl)**: Learning physical parameters -->
 
 ### API
 Checkout the API documentation.
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 

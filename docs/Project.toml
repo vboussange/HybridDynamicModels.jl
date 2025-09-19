@@ -1,2 +1,6 @@
 [deps]
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+HybridDynamicModels = "7e133797-8c8e-49d9-acf3-b153daa40e06"
+Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
+Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"

@@ -2,10 +2,10 @@
 """
     AnalyticModel(layers::NamedTuple, fun::Function; kwargs...)
 
-Wraps an analytic model for direct evaluation using LuxCore layers.
+Wraps an analytic model for direct evaluation using Lux layers.
 
 ## Arguments
-  - `layers`: NamedTuple of LuxCore layers representing the layers of the model.
+  - `layers`: NamedTuple of Lux layers representing the layers of the model.
   - `fun`: Function that computes the analytic solution, with signature `fun(layers, u0, t0, ps, t)`.
   - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `tspan`, `saveat`).
 

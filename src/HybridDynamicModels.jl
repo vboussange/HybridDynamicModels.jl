@@ -6,6 +6,7 @@ using Random
 using ConcreteStructs: @concrete
 using DiffEqBase
 using DispatchDoctor: @stable
+using Functors: @functor
 
 include("data.jl")
 include("constraints.jl")
@@ -23,7 +24,7 @@ include("layers/models/armodel.jl")
 include("train.jl")
 
 
-export SegmentedTimeSeries, tokenize, tokens
+export SegmentedTimeSeries, tokenize, tokens, create_train_val_loaders
 export ParameterLayer
 export NoConstraint, BoxConstraint, NamedTupleConstraint
 export ODEModel, AnalyticModel, ARModel

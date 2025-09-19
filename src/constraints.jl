@@ -7,12 +7,64 @@ function _clamp(x, a, b)
     return clamped_x
 end
 
+"""
+    NoConstraint()
+
+Applies no transformation to parameters.
+
+## Arguments
+  - None.
+
+## Inputs
+- `x`: Parameter values.
+- `st`: States.
+
+## Outputs
+- Unmodified parameter values and states.
+
+## Behavior
+Identity transformation - parameters remain unconstrained.
+
+## Example
+
+```jldoctest
+julia> constraint = NoConstraint()
+julia> x, st = constraint([1.0, 2.0], (;))
+([1.0, 2.0], (;))
+```
+"""
 struct NoConstraint <: AbstractLuxLayer end
 LuxCore.initialstates(::AbstractRNG, layer::NoConstraint) = (;)
 (n::NoConstraint)(x, st) = x, st
 inverse(::NoConstraint, y, st) = y, st
 
+"""
+    BoxConstraint(lb::AbstractArray, ub::AbstractArray)
 
+Constrains parameters to lie within specified bounds using sigmoid transformation.
+
+## Arguments
+  - `lb`: Lower bounds array.
+  - `ub`: Upper bounds array.
+
+## Inputs
+- `y`: Unconstrained parameter values.
+- `st`: States containing bounds.
+
+## Outputs
+- Constrained parameter values within bounds.
+
+## Behavior
+Transforms unconstrained parameters to constrained space using sigmoid function.
+
+## Example
+
+```jldoctest
+julia> constraint = BoxConstraint([0.0], [1.0])
+julia> x, st = constraint([0.0], (;lb=[0.0], ub=[1.0]))
+([0.5], (;lb=[0.0], ub=[1.0]))
+```
+"""
 @concrete struct BoxConstraint <: AbstractLuxLayer
   init_state <: Function
 end
@@ -42,7 +94,31 @@ function truncated_link(x, a, b)
     return LogExpFunctions.logit((x - a) / (b - a))
 end
 
+"""
+    NamedTupleConstraint(constraints::NamedTuple)
 
+Applies different constraints to different fields of a NamedTuple.
+
+## Arguments
+  - `constraints`: NamedTuple of constraint objects.
+
+## Inputs
+- `x`: NamedTuple of parameter values.
+- `st`: NamedTuple of states.
+
+## Outputs
+- Constrained parameter values.
+
+## Behavior
+Applies field-specific constraints to NamedTuple parameters.
+
+## Example
+
+```jldoctest
+julia> constraints = (a = BoxConstraint([0.0], [1.0]), b = NoConstraint())
+julia> constraint = NamedTupleConstraint(constraints)
+```
+"""
 @concrete struct NamedTupleConstraint <: LuxCore.AbstractLuxWrapperLayer{:constraints}
     constraints <: NamedTuple
 end
@@ -80,99 +156,99 @@ end
     return Expr(:block, calls...)
 end
 
-"""
-    Constraint
+# """
+#     Constraint
 
-Abstract type representing parameter constraints in HybridDynamicModels.jl.
+# Abstract type representing parameter constraints in HybridDynamicModels.jl.
 
-Constraints are used to enforce physical or mathematical bounds on parameters during optimization.
-They work by transforming unconstrained parameters to constrained parameter spaces and vice versa.
+# Constraints are used to enforce physical or mathematical bounds on parameters during optimization.
+# They work by transforming unconstrained parameters to constrained parameter spaces and vice versa.
 
-# Available Constraint Types
+# # Available Constraint Types
 
-## NoConstraint
-The simplest constraint that applies no transformation. Parameters remain unconstrained.
+# ## NoConstraint
+# The simplest constraint that applies no transformation. Parameters remain unconstrained.
 
-```julia
-constraint = NoConstraint()
-```
+# ```julia
+# constraint = NoConstraint()
+# ```
 
-## BoxConstraint
-Constrains parameters to lie within specified lower and upper bounds using a sigmoid transformation.
+# ## BoxConstraint
+# Constrains parameters to lie within specified lower and upper bounds using a sigmoid transformation.
 
-```julia
-# Constrain parameters to [0, 1]
-constraint = BoxConstraint([0.0, 0.0], [1.0, 1.0])
+# ```julia
+# # Constrain parameters to [0, 1]
+# constraint = BoxConstraint([0.0, 0.0], [1.0, 1.0])
 
-# Constrain to different bounds for each parameter
-constraint = BoxConstraint([0.0, -1.0], [10.0, 1.0])
-```
+# # Constrain to different bounds for each parameter
+# constraint = BoxConstraint([0.0, -1.0], [10.0, 1.0])
+# ```
 
-## NamedTupleConstraint
-Applies different constraints to different fields of a NamedTuple.
+# ## NamedTupleConstraint
+# Applies different constraints to different fields of a NamedTuple.
 
-```julia
-constraints = (
-    decay_rate = BoxConstraint([0.0], [1.0]),  # Between 0 and 1
-    amplitude = NoConstraint()                  # Unconstrained
-)
-constraint = NamedTupleConstraint(constraints)
-```
+# ```julia
+# constraints = (
+#     decay_rate = BoxConstraint([0.0], [1.0]),  # Between 0 and 1
+#     amplitude = NoConstraint()                  # Unconstrained
+# )
+# constraint = NamedTupleConstraint(constraints)
+# ```
 
-# Usage in ParameterLayer
+# # Usage in ParameterLayer
 
-Constraints are primarily used with `ParameterLayer` to ensure parameters stay within valid ranges:
+# Constraints are primarily used with `ParameterLayer` to ensure parameters stay within valid ranges:
 
-```julia
-# Parameter with positivity constraint
-param = ParameterLayer(
-    constraint = BoxConstraint([0.0], [Inf]),
-    init_value = (;rate = [0.1])
-)
-```
+# ```julia
+# # Parameter with positivity constraint
+# param = ParameterLayer(
+#     constraint = BoxConstraint([0.0], [Inf]),
+#     init_value = (;rate = [0.1])
+# )
+# ```
 
-# Mathematical Details
+# # Mathematical Details
 
-Constraints work by transforming between constrained and unconstrained spaces:
+# Constraints work by transforming between constrained and unconstrained spaces:
 
-- **Forward transformation**: `constrained = constraint(unconstrained)`
-- **Inverse transformation**: `unconstrained = inverse(constraint, constrained)`
+# - **Forward transformation**: `constrained = constraint(unconstrained)`
+# - **Inverse transformation**: `unconstrained = inverse(constraint, constrained)`
 
-The inverse transformation is used during optimization to work in an unconstrained space,
-while the forward transformation produces the final constrained parameters.
+# The inverse transformation is used during optimization to work in an unconstrained space,
+# while the forward transformation produces the final constrained parameters.
 
-# Examples
+# # Examples
 
-## Basic usage with bounds
-```julia
-using HybridDynamicModels
+# ## Basic usage with bounds
+# ```julia
+# using HybridDynamicModels
 
-# Create a parameter that must be positive
-param = ParameterLayer(
-    constraint = BoxConstraint([0.0], [Inf]),
-    init_value = (;growth_rate = 0.05)
-)
+# # Create a parameter that must be positive
+# param = ParameterLayer(
+#     constraint = BoxConstraint([0.0], [Inf]),
+#     init_value = (;growth_rate = 0.05)
+# )
 
-ps, st = LuxCore.setup(Random.default_rng(), param)
-constrained_value, _ = param(ps, st)
-# constrained_value.growth_rate will be >= 0
-```
+# ps, st = LuxCore.setup(Random.default_rng(), param)
+# constrained_value, _ = param(ps, st)
+# # constrained_value.growth_rate will be >= 0
+# ```
 
-## Multiple constraints
-```julia
-# Parameters with different constraints
-constraints = (
-    concentration = BoxConstraint([0.0], [1.0]),    # 0 to 1
-    temperature = BoxConstraint([273.0], [373.0]),  # 0°C to 100°C
-    pressure = NoConstraint()                        # Unconstrained
-)
+# ## Multiple constraints
+# ```julia
+# # Parameters with different constraints
+# constraints = (
+#     concentration = BoxConstraint([0.0], [1.0]),    # 0 to 1
+#     temperature = BoxConstraint([273.0], [373.0]),  # 0°C to 100°C
+#     pressure = NoConstraint()                        # Unconstrained
+# )
 
-param = ParameterLayer(
-    constraint = NamedTupleConstraint(constraints),
-    init_value = (;concentration = 0.5, temperature = 298.0, pressure = 1.0)
-)
-```
+# param = ParameterLayer(
+#     constraint = NamedTupleConstraint(constraints),
+#     init_value = (;concentration = 0.5, temperature = 298.0, pressure = 1.0)
+# )
+# ```
 
-See also: `ParameterLayer`, `NoConstraint`, `BoxConstraint`, `NamedTupleConstraint`
-"""
+# See also: `ParameterLayer`, `NoConstraint`, `BoxConstraint`, `NamedTupleConstraint`
+# """
 Constraint = Union{NoConstraint, BoxConstraint, NamedTupleConstraint}

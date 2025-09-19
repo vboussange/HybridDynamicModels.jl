@@ -1,10 +1,10 @@
 """
     ARModel(layers::NamedTuple, fun::Function; kwargs...)
 
-Wraps an autoregressive (AR) model for iterative time series prediction using Lux layers.
+Wraps an autoregressive (AR) model.
 
 ## Arguments
-  - `layers`: NamedTuple of Lux layers representing the layers of the model.
+  - `layers`: NamedTuple of Lux layers representing the layers associated with the model.
   - `fun`: Function that computes the next time step, with signature `fun(layers, u, ps, t)`.
   - `kwargs`: Additional keyword arguments (e.g., default values for `u0`, `tspan`, `saveat`, `dt`).
 
@@ -32,24 +32,29 @@ The model iteratively applies the function to generate a time series from initia
 ## Example
 
 ```jldoctest
+julia> using HybridDynamicModels, Lux, Random
+
 julia> layers = (; 
            predictor = Dense(2, 2), 
-           params = ParameterLayer(init_value = (decay = 0.95,))
-       )
-julia> ar_step(layers, u, ps, t) = layers.predictor(u, ps.predictor) .* layers.params(ps.params)[1].decay
-julia> model = ARModel(layers, ar_step; dt = 0.1, u0 = [1.0, 0.5], tspan = (0.0, 1.0), saveat = 0:0.1:1.0)
-julia> ps, st = Lux.setup(Random.default_rng(), model)
-julia> model((; u0 = [1.0, 0.5]), ps, st)
+           params = ParameterLayer(init_value = (; decay = [95f-2],))
+       );
+
+julia> ar_step(layers, u, ps, t) = layers.predictor(u, ps.predictor) .* layers.params(ps.params).decay;
+
+julia> model = ARModel(layers, ar_step; dt = 1f-1, u0 = [1f0, 5f-1], tspan = (0f0, 1f0), saveat = 0:1f-1:1f0);
+
+julia> ps, st = Lux.setup(Random.default_rng(), model);
+
+julia> x = (; u0 = [1f0, 5f-1]);
+
+julia> y, st = model(x, ps, st);
+
+julia> size(y) # 2 state variables, 11 time points
+(2, 11) 
 ```
 
-## Use Cases
-- Discrete-time dynamical systems
-- Time series forecasting with neural networks
-- Recurrent model architectures
-- Hybrid models combining neural networks with autoregressive dynamics
-
 !!!warning
-    Undefined behavior when `ps` is not a NamedTuple
+    Undefined behavior when `x` is not a NamedTuple
 """
 @concrete struct ARModel <: HybridDynamicModel
     layers<:NamedTuple{names, <:NTuple{N, AbstractLuxLayer}} where {names, N}

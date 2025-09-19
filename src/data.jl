@@ -1,25 +1,29 @@
-# Adapted from Flux.jl `DataLoader` and MLUtils.jl `DataLoader`
-using Random: AbstractRNG, shuffle!, GLOBAL_RNG
-using Functors: @functor
 """
     SegmentedTimeSeries(data; segment_length=2, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
 
-An object that iterates over mini-batches of segments of `data`,
-each segment containing `segment_length` data points, each mini-batch containing `batchsize` segments
-(except possibly the last one). The last dimension in each tensor is the time dimension, i.e. the one segmented.
+An object that iterates over mini-batches of segments of `data`, each segment containing `segment_length` data points, each mini-batch containing `batchsize` segments. The last dimension in each tensor is the time dimension.
 
-# Arguments
-- `segment_length`: Number of time points in each segment.
-- `shift`: Step size between the start of consecutive segments. If `shift < segment_length`, segments will overlap; if `shift > segment_length`, there will be gaps. By default, `shift = segment_length` (no overlap).
-- `batchsize`: Number of segments per batch.
-- `shuffle`: Shuffle the order of segments before batching.
-- `partial_segment`: Allow the last segment to be shorter than `segment_length` if not enough data remains.
-- `partial_batch`: Allow the last batch to contain fewer than `batchsize` segments if not enough segments remain.
-- `rng`: Random number generator for shuffling.
+## Arguments
+  - `data`: Input data (array, tuple, or named tuple).
+  - `segment_length`: Number of time points in each segment.
+  - `shift`: Step size between consecutive segments (default: `segment_length`).
+  - `batchsize`: Number of segments per batch.
+  - `shuffle`: Whether to shuffle segment order.
+  - `partial_segment`: Allow shorter final segments.
+  - `partial_batch`: Allow smaller final batches.
+  - `rng`: Random number generator for shuffling.
 
-# Examples
+## Inputs
+- `data`: The time series data to segment.
 
-## Basic usage with array
+## Outputs
+- Iterator yielding batches of data segments.
+
+## Behavior
+Creates overlapping or non-overlapping segments from time series data for training dynamical models. Segments can be shuffled and batched for efficient training.
+
+## Example
+
 ```jldoctest
 julia> Xtrain = rand(10, 100)
 julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=2, batchsize=1)
@@ -28,41 +32,8 @@ julia> for batch in sdl
        end
 ```
 
-## With time steps and tuple input
-```jldoctest
-julia> tsteps = 1:100
-julia> sdl = SegmentedTimeSeries((Xtrain, tsteps); segment_length=2, batchsize=1)
-julia> for (data, tseg) in sdl
-           println("Data: ", summary(data))
-           println("Time segment: ", tseg)
-       end
-```
-
-## Custom shift and batch size
-```jldoctest
-julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=3, shift=1, batchsize=2)
-julia> for batch in sdl
-           println("Batch: ", batch)
-       end
-```
-
-## Partial segments and batches
-```jldoctest
-julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=3, batchsize=2, partial_segment=true, partial_batch=true)
-julia> for batch in sdl
-           println("Batch: ", batch)
-       end
-```
-
-## Shuffle segments
-```jldoctest
-julia> using Random
-julia> rng = Random.MersenneTwister(42)
-julia> sdl = SegmentedTimeSeries(Xtrain; segment_length=2, batchsize=1, shuffle=true, rng=rng)
-julia> for batch in sdl
-           println("Shuffled batch: ", batch)
-       end
-```
+!!!warning
+    Undefined behavior when data dimensions are incompatible
 """
 struct SegmentedTimeSeries{D, I, R<:AbstractRNG} # When iterated, returns (data, model_features) where model_features is a vector
     data::D
@@ -164,6 +135,31 @@ _get_ts_obs(data::Union{Tuple, NamedTuple}, i) = map(Base.Fix2(_get_ts_obs, i), 
 
 Base.eltype(::SegmentedTimeSeries{D}) where D = Array{eltype(D), ndims(D) + 1}
 
+"""
+    tokenize(sdl::SegmentedTimeSeries)
+
+Convert a SegmentedTimeSeries to use token-based indexing.
+
+## Arguments
+  - `sdl`: The SegmentedTimeSeries to tokenize.
+
+## Inputs
+- `sdl`: SegmentedTimeSeries object.
+
+## Outputs
+- Tokenized SegmentedTimeSeries with integer-based segment access.
+
+## Behavior
+Transforms segment indices into a token-based system for easier access to individual segments.
+
+## Example
+
+```jldoctest
+julia> sdl = SegmentedTimeSeries(rand(10, 100); segment_length=2)
+julia> tokenized_sdl = tokenize(sdl)
+julia> tokens(tokenized_sdl) # Returns available tokens
+```
+"""
 function tokenize(sdl::SegmentedTimeSeries)
     return SegmentedTimeSeries(sdl.data, 
                             sdl.segment_length, 
@@ -178,6 +174,31 @@ function tokenize(sdl::SegmentedTimeSeries)
                             sdl.rng)
 end
 
+"""
+    tokens(sdl::SegmentedTimeSeries)
+
+Get the available tokens for a tokenized SegmentedTimeSeries.
+
+## Arguments
+  - `sdl`: A tokenized SegmentedTimeSeries.
+
+## Inputs
+- `sdl`: Tokenized SegmentedTimeSeries object.
+
+## Outputs
+- Range of available tokens (1 to number of segments).
+
+## Behavior
+Returns the range of tokens that can be used to access individual segments in a tokenized SegmentedTimeSeries.
+
+## Example
+
+```jldoctest
+julia> sdl = SegmentedTimeSeries(rand(10, 100); segment_length=2)
+julia> tokenized_sdl = tokenize(sdl)
+julia> collect(tokens(tokenized_sdl)) # [1, 2, 3, ...]
+```
+"""
 tokens(sdl::SegmentedTimeSeries{D, I, R}) where {D, I <: AbstractVector{<:Pair}, R} = 1:sdl.nsegments
 
 function Base.getindex(sdl::SegmentedTimeSeries, token)

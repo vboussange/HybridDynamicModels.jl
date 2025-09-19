@@ -7,18 +7,19 @@ import Functors: functor
 A layer representing parameters, optionally with constraints.
 
 ## Arguments
-
-  - `constraint`: An `AbstractConstraint` to transform parameters of type `init_value`.
-  - `init_value`: Initial parameter values; can be a NamedTuple or an `AbstractArray` with `getproperty` defined.
-  - `init_state_value`: Parameter internal state; must be a NamedTuple.
+  - `constraint`: Constraint to transform parameters.
+  - `init_value`: Initial parameter values (NamedTuple or AbstractArray).
+  - `init_state_value`: Internal state (NamedTuple).
 
 ## Inputs
+- `ps`: Parameters of the layer.
+- `st`: States of the layer.
 
-  - `ps`: Parameters of the layer.
-  - `st`: States of the layer.
+## Outputs
+- Constrained parameter values merged with states.
 
-## Output
-- Parameter values constrained by `constraint`, merged with states `st`.
+## Behavior
+Applies constraints to parameters during forward pass. Parameters are transformed from unconstrained to constrained space.
 
 ## Example
 
@@ -26,7 +27,6 @@ A layer representing parameters, optionally with constraints.
 julia> param = ParameterLayer(; constraint = NoConstraint(),
                             init_value = (;a = ones(2)), 
                             init_state_value = (;b = (0.0, 1.0)))
-ParameterLayer(...)
 julia> ps, st = Lux.setup(Random.default_rng(), param)
 julia> x, _ = param(ps, st)
 julia> x == (a = [1.0, 1.0], b = (0.0, 1.0))

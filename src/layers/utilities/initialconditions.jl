@@ -6,22 +6,24 @@
 Initial condition layer.
 
 ## Arguments
-  - `ics`: A LuxCore layer, a `ParameterLayer` or a vector of
-    `ParameterLayer`.
+  - `ics`: Lux layer, ParameterLayer, or vector of ParameterLayer.
 
 ## Inputs
-    - (`x`, `ps`, `st`) with `x` a `NamedTuple` or `AbstractVector{NamedTuple}` (batch mode), when `ics` is an `AbstractLuxLayer` or a `Vector{<:ParameterLayer}`.
-    - (`ps`, `st`) when `ics` is a `ParameterLayer` (feature less).
+- (`x`, `ps`, `st`) with `x` a NamedTuple or AbstractVector{NamedTuple} (batch mode).
+- (`ps`, `st`) when `ics` is a ParameterLayer.
 
 ## Outputs
-    - `u0`: Initial conditions, merged with states other fields.
-    - `st`: Updated states.
+- Initial conditions merged with other fields.
+- Updated states.
 
 ## Behavior
-    - when applicable, `x.u0` is passed to the wrapped layer; the output is returned, merged with other fields of `x`.
+Processes initial conditions through wrapped layers and merges with input data.
 
-!!!warning
-    Undefined behavior when `ps` is not a NamedTuple
+## Example
+
+```jldoctest
+julia> ic_layer = ICLayer(ParameterLayer(init_value = (;u0 = [1.0])))
+```
 """
 @concrete struct ICLayer <: HybridDynamicModelsWrapperLayer
     layers

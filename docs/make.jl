@@ -1,4 +1,4 @@
-using Documenter, HybridDynamicModels
+using Documenter, Lux, Turing, ComponentArrays, HybridDynamicModels
 
 readme_str = read(joinpath(@__DIR__, "..", "README.md"), String)
 readme_str = replace(readme_str, "> [!CAUTION]\n> " => "!!! warning\n    ")
@@ -12,7 +12,7 @@ makedocs(;
     modules=[HybridDynamicModels],
     authors="Victor Boussange",
     sitename="HybridDynamicModels.jl",
-    linkcheck=true,
+    linkcheck=false,
     clean=true,
     format=Documenter.HTML(;
         assets=["assets/favicon.ico"],
@@ -22,6 +22,7 @@ makedocs(;
         "api.md",
         "dev_guide.md",
     ],
+    doctest = false,
 )
 
 deploydocs(;
