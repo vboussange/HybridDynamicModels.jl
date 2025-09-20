@@ -6,23 +6,25 @@
 # - `AnalyticModel`: For explicit analytical solutions
 #
 # We'll show how to implement the same logistic growth dynamics using each approach.
-
+using Lux, Optimisers, ComponentArrays
 using HybridDynamicModels
-using Lux
-using OrdinaryDiffEq
+using Zygote
+using OrdinaryDiffEq, SciMLSensitivity # for ODEModel and sensitivity analysis
 using Plots
 using Random
 using ComponentArrays
+using StatsBase
 
+rng = MersenneTwister(42)
 # ## Step 1: Define the Problem
 #
 # We'll model logistic growth: du/dt = r*u*(1 - u/K)
 # with known analytical solution: u(t) = K*u0 / (u0 + (K - u0)*exp(-r*t))
 
 # True parameters
-r_true = 0.2
-K_true = 3.0
-u0_true = 0.5
+r_true = [0.2]
+K_true = [3.0]
+u0_true = [0.5]
 
 # Time settings
 tspan = (0.0, 10.0)
@@ -30,40 +32,41 @@ tsteps = 0.0:0.2:10.0
 
 # Generate reference data
 function analytical_solution(u0, r, K, t)
-    return K * u0 / (u0 + (K - u0) * exp(-r * t))
+    return @. K * u0 / (u0 + (K - u0) * exp(-r * t))
 end
 
-reference_solution = [analytical_solution(u0_true, r_true, K_true, t) for t in tsteps]
+reference_solution = reduce(hcat, [analytical_solution(u0_true, r_true, K_true, t) for t in tsteps])
 
-println("Modeling logistic growth with r=$r_true, K=$K_true, u0=$u0_true")
+println("Modeling logistic growth with r=$(r_true[]), K=$(K_true[]), u0=$(u0_true[])")
 
 # ## Step 2: ODEModel Implementation
 #
 # Use ODEModel for the differential equation approach.
 
 println("\n=== ODEModel ===")
-
-param_layer_ode = ParameterLayer(init_value = (; r = 0.15, K = 2.5))
+param_layer_ode = ParameterLayer(init_value = (; r = [0.15], K = [2.5]))
 
 function logistic_ode(layers, u, ps, t)
+    T = eltype(u)
     params = layers.params(ps.params)
     r, K = params.r, params.K
-    return r * u * (1 - u / K)
+    return @. r * u * (one(T) - u / K)
 end
 
 ode_model = ODEModel(
     (; params = param_layer_ode),
     logistic_ode;
     alg = Tsit5(),
+    sensealg = InterpolatingAdjoint(autojacvec=ZygoteVJP()),
     abstol = 1e-6,
     reltol = 1e-6
 )
 
 # Test ODE model
-ps_ode, st_ode = Lux.setup(Random.default_rng(), ode_model)
+ps_ode, st_ode = Lux.setup(rng, ode_model)
 ps_ode = ComponentArray(ps_ode)
 
-input_ode = (; u0 = [u0_true], saveat = tsteps, tspan = tspan)
+input_ode = (; u0 = u0_true, saveat = tsteps, tspan = tspan)
 pred_ode, _ = ode_model(input_ode, ps_ode, st_ode)
 
 println("ODE model prediction shape: ", size(pred_ode))
@@ -75,14 +78,15 @@ println("ODE model prediction shape: ", size(pred_ode))
 println("\n=== ARModel ===")
 
 # For AR model, we need to define the step function
-param_layer_ar = ParameterLayer(init_value = (; r = 0.15, K = 2.5))
+param_layer_ar = ParameterLayer(init_value = (; r = [0.15], K = [2.5]))
 
 function logistic_ar_step(layers, u, ps, t)
+    T = eltype(u)
     params = layers.params(ps.params)
     r, K = params.r, params.K
     dt = 0.2  # Time step (should match data spacing)
     # Simple Euler discretization of the ODE
-    return u + dt * r * u * (1 - u / K)
+    return @. u + dt * r * u * (one(T) - u / K)
 end
 
 ar_model = ARModel(
@@ -94,10 +98,10 @@ ar_model = ARModel(
 )
 
 # Test AR model
-ps_ar, st_ar = Lux.setup(Random.default_rng(), ar_model)
+ps_ar, st_ar = Lux.setup(rng, ar_model)
 ps_ar = ComponentArray(ps_ar)
 
-input_ar = (; u0 = [u0_true], saveat = tsteps, tspan = tspan)
+input_ar = (; u0 = u0_true, saveat = tsteps, tspan = tspan)
 pred_ar, _ = ar_model(input_ar, ps_ar, st_ar)
 
 println("AR model prediction shape: ", size(pred_ar))
@@ -108,13 +112,13 @@ println("AR model prediction shape: ", size(pred_ar))
 
 println("\n=== AnalyticModel ===")
 
-param_layer_analytic = ParameterLayer(init_value = (; r = 0.15, K = 2.5))
+param_layer_analytic = ParameterLayer(init_value = (; r = [0.15], K = [2.5]))
 
 function logistic_analytic(layers, u0, t0, ps, t)
     params = layers.params(ps.params)
     r, K = params.r, params.K
     # Analytical solution for logistic growth
-    return K * u0 / (u0 + (K - u0) * exp(-r * (t - t0)))
+    return @. K * u0 / (u0 + (K - u0) * exp(-r * (t - t0)))
 end
 
 analytic_model = AnalyticModel(
@@ -125,10 +129,10 @@ analytic_model = AnalyticModel(
 )
 
 # Test analytic model
-ps_analytic, st_analytic = Lux.setup(Random.default_rng(), analytic_model)
+ps_analytic, st_analytic = Lux.setup(rng, analytic_model)
 ps_analytic = ComponentArray(ps_analytic)
 
-input_analytic = (; u0 = [u0_true], saveat = tsteps, tspan = tspan)
+input_analytic = (; u0 = u0_true, saveat = tsteps, tspan = tspan)
 pred_analytic, _ = analytic_model(input_analytic, ps_analytic, st_analytic)
 
 println("Analytic model prediction shape: ", size(pred_analytic))
@@ -138,7 +142,7 @@ println("Analytic model prediction shape: ", size(pred_analytic))
 # Plot and compare the outputs from all three models.
 
 plt_comparison = plot(
-    tsteps, reference_solution,
+    tsteps, reference_solution',
     label = "True Analytical",
     linewidth = 3,
     color = :black,
@@ -148,19 +152,19 @@ plt_comparison = plot(
     ylabel = "Population"
 )
 
-plot!(plt_comparison, tsteps, pred_ode[:, 1],
+plot!(plt_comparison, tsteps, pred_ode',
       label = "ODE Model",
       linewidth = 2,
       color = :blue,
       linestyle = :dash)
 
-plot!(plt_comparison, tsteps, pred_ar[:, 1],
+plot!(plt_comparison, tsteps, pred_ar',
       label = "AR Model",
       linewidth = 2,
       color = :red,
       linestyle = :dot)
 
-plot!(plt_comparison, tsteps, pred_analytic[:, 1],
+plot!(plt_comparison, tsteps, pred_analytic',
       label = "Analytic Model",
       linewidth = 2,
       color = :green,
@@ -176,9 +180,9 @@ function compute_rmse(pred, true_val)
     return sqrt(mean((pred .- true_val).^2))
 end
 
-rmse_ode = compute_rmse(pred_ode[:, 1], reference_solution)
-rmse_ar = compute_rmse(pred_ar[:, 1], reference_solution)
-rmse_analytic = compute_rmse(pred_analytic[:, 1], reference_solution)
+rmse_ode = compute_rmse(pred_ode', reference_solution)
+rmse_ar = compute_rmse(pred_ar', reference_solution)
+rmse_analytic = compute_rmse(pred_analytic', reference_solution)
 
 println("\nAccuracy Comparison (RMSE):")
 println("ODE Model: ", round(rmse_ode, digits=6))

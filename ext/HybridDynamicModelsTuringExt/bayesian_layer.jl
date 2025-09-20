@@ -9,17 +9,19 @@ HybridDynamicModels.getpriors(l::BayesianLayer{L, P}) where {L, P <: NamedTuple}
 function HybridDynamicModels.getpriors(l::BayesianLayer{
         L, D}) where {L, D <: Distributions.Distribution}
     ps = LuxCore.initialparameters(Random.default_rng(), l)
-    if isa(l.priors, UnivariateDistribution)
-        distrib = []
-        for k in keys(ps)
-            push!(distrib, k => arraydist(fill(l.priors, size(ps[k]))))
-        end
-    else
-        for k in keys(ps)
-            push!(distrib, k => l.priors)
+
+    # Helper function to apply distribution logic to each parameter
+    function apply_distribution(param_value)
+        if isa(l.priors, Distributions.UnivariateDistribution)
+            return arraydist(fill(l.priors, size(param_value)))
+        else
+            return l.priors
         end
     end
-    return NamedTuple(distrib)
+
+    # Use fmap to recursively apply the distribution logic to nested structures
+    distrib = LuxCore.Internal.fmap(apply_distribution, ps; exclude=LuxCore.Internal.isleaf)
+    return distrib
 end
 
 HybridDynamicModels.getpriors(l::NamedTuple) = map(HybridDynamicModels.getpriors, l)
@@ -47,7 +49,7 @@ function Turing.sample(rng::Random.AbstractRNG,
         model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
         chain::Turing.MCMCChains.Chains, args...; kwargs...)
     priors = HybridDynamicModels.getpriors(model)
-    posterior_samples = sample(rng, chain, args...; kwargs...)
+    posterior_samples = Turing.sample(rng, chain, args...; kwargs...)
     mat = Array(posterior_samples)              # rows = draws, cols = flattened params
     n = size(mat, 1)
 

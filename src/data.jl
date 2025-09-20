@@ -51,7 +51,7 @@ end
 
 @functor SegmentedTimeSeries (data,)
 
-function SegmentedTimeSeries(data; segment_length=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=GLOBAL_RNG)
+function SegmentedTimeSeries(data; segment_length=nothing, shift=nothing, batchsize=1, shuffle=false, partial_segment=false, partial_batch=false, rng=Random.default_rng())
     isnothing(segment_length) && (segment_length = _nobs(data))
     @assert segment_length > 0
     @assert segment_length <= _nobs(data) "Segment size must be less than or equal to the number of time steps."

@@ -2,7 +2,29 @@
 |:-----------------:|:----------------:|:---------:|:-----------:|
 | [![docsstbl][docs-stbl]][docsstbl-url] [![docsdev][docs-dev]][docsdev-url] | [![CI][ci-img]][ci-url] | [![Julia][julia-img]][julia-url] [![Code Style: Blue][style-img]][style-url] | [![Aqua QA][aqua-img]][aqua-url] [![codecov][cc-img]][cc-url] |
 
+[docs-stbl]: https://img.shields.io/badge/docs-stable-blue.svg
+[docsstbl-url]: https://vboussange.github.io/HybridDynamicModels.jl/stable/
 
+[docs-dev]: https://img.shields.io/badge/docs-dev-blue.svg
+[docsdev-url]: https://vboussange.github.io/HybridDynamicModels.jl/dev/
+
+[ci-img]: https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml/badge.svg?branch=main
+[ci-url]: https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml?query=branch%3Amain
+
+[cc-img]: https://codecov.io/gh/vboussange/HybridDynamicModels.jl/branch/main/graph/badge.svg
+[cc-url]: https://codecov.io/gh/vboussange/HybridDynamicModels.jl
+
+[julia-img]: https://img.shields.io/badge/julia-v1.10+-blue.svg
+[julia-url]: https://julialang.org/
+
+[style-img]: https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826
+[style-url]: https://github.com/SciML/SciMLStyle
+
+[aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
+[aqua-url]: https://github.com/JuliaTesting/Aqua.jl
+
+[jet-img]: https://img.shields.io/badge/%E2%9C%88%EF%B8%8F%20tested%20with%20-%20JET.jl%20-%20red
+[jet-url]: https://github.com/aviatesk/JET.jl
 
 ![](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/docs/src/assets/logo.svg)
 
@@ -16,7 +38,7 @@
 
 ## 🚀 Key Features
 
-### **Dynamical model layers**
+### **Dynamic model layers**
 - **`ICLayer`**: For initial condition inference
 - **`ODEModel`**: Neural ODEs
 - **`ARModel`**: Autoregressive models
@@ -43,57 +65,51 @@ Pkg.add("HybridDynamicModels")
 
 ## 🔥 Quick Start
 
-### Basic Hybrid ODE Model
+### Simple Hybrid Model
 
 ```julia
+using Lux, Optimisers, ComponentArrays
 using HybridDynamicModels
-using Lux, OrdinaryDiffEq, Optimisers
+using Zygote
+using Random
 
-# Define hybrid model layers
-neural_layer = Chain(Dense(2, 2, tanh), Dense(2, 2))
+# Dense layer for nonlinear interactions
+interaction_layer = Dense(2, 2)
 
-param_constraint = BoxConstraint([1e-2], [1e0])
-param_layer = ParameterLayer(init_value = (growth_rate = [0.1, 0.2]), constraint = param_constraint)
+# Parameter layer for growth/decay rates
+rate_params = ParameterLayer(init_value = (growth = [0.1], decay = [0.05]))
 
-# Hybrid dynamics combining neural network and domain knowledge
-function dudt(layers, u, ps, t)
-    # Domain-specific term
-    domain_params = layers.params(ps.params)
-    growth_term = domain_params.growth_rate .* u
+# Simple hybrid dynamics: linear terms + neural interactions
+function ar_step(layers, u, ps, t)
+    # Linear terms from parameters
+    params = layers.rates(ps.rates)
+    linear = [params.growth[1] * u[1], -params.decay[1] * u[2]]
     
-    # Neural network term  
-    neural_term = layers.neural(u, ps.neural)
+    # Neural network interactions
+    neural = layers.interaction(u, ps.interaction)
     
-    return growth_term + neural_term
+    return linear + neural
 end
 
-# Create the ODE model
-model = ODEModel(
-    (neural = neural_layer, params = param_layer),
-    dudt,
-    alg = Tsit5(),
-    abstol = 1e-6,
-    reltol = 1e-6
-)
+# Create autoregressive model
+model = ARModel(
+    (interaction = interaction_layer, rates = rate_params),
+    ar_step;
+    dt = 0.1)
 
-# Setup training data
-data = rand(2, 100)  # Your time series data
-dataloader = SegmentedTimeSeries(data; segment_length=20, shift=10)
+# Setup and train
+ps, st = Lux.setup(Random.default_rng(), model)
+tsteps = range(0, stop=10.0, step=0.1)
+data = rand(2, length(tsteps))
 
-# Configure training
-backend = SGDBackend(
-    Adam(1e-3),           # Optimizer
-    1000,                 # Number of epochs  
-    AutoZygote(),         # AD backend
-    MSELoss()            # Loss function
-)
+dataloader = SegmentedTimeSeries((data, tsteps); segment_length=20, shift= 2)
 
-# Train the model
+backend = SGDBackend(Adam(1e-3), 100, AutoZygote(), MSELoss())
 result = train(backend, model, dataloader, InferICs(false))
-trained_model = result.best_model
 
 # Make predictions
-prediction = trained_model((u0 = [1.0, 0.5], tspan = (0.0, 10.0), saveat = 0:0.1:10))
+tspan = (tsteps[1], tsteps[end])
+prediction, _ = model((; u0 = result.ics[1].u0, tspan = tspan, saveat = tsteps), result.ps, result.st)
 ```
 
 ### Bayesian Parameter Estimation
@@ -101,55 +117,65 @@ prediction = trained_model((u0 = [1.0, 0.5], tspan = (0.0, 10.0), saveat = 0:0.1
 ```julia
 using Distributions, Turing
 
-# Add Bayesian priors to parameters
-param_priors = (growth_rate = product_distribution([Normal(0.1, 0.05), Normal(0.2, 0.05)]),)
-bayesian_params = BayesianLayer(param_layer, param_priors)
+# Add priors to rate parameters
+rate_priors = (
+    growth = arraydist([Normal(0.1, 0.05)]),
+    decay = arraydist([Normal(0.05, 0.02)])
+)
+nn_priors = Normal(0, 1)  # Example prior for NN weights
 
 # Create Bayesian model
-bayesian_model = ODEModel(
-    (neural = neural_layer, params = bayesian_params),
-    dudt,
-    alg = Tsit5()
+bayesian_model = ARModel(
+    (interaction = BayesianLayer(interaction_layer, nn_priors), 
+    rates = BayesianLayer(rate_params, rate_priors)),
+    ar_step;
+    dt = 0.1,
 )
 
-# MCMC training for uncertainty quantification
-mcmc_backend = MCSamplingBackend(
-    NUTS(0.65),          # MCMC sampler
-    1000,                # Number of samples
-    LogNormal            # Data likelihood
-)
+# MCMC training
+datadistrib = Normal
+mcmc_backend = MCSamplingBackend(NUTS(0.65), 500, datadistrib)
+result = train(mcmc_backend, bayesian_model, dataloader, InferICs(false))
 
-# Bayesian training
-result = train(mcmc_backend, bayesian_model, dataloader, InferICs(true))
+# Sample from posterior
 chains = result.chains
-
-# Posterior analysis
-posterior_samples = sample(result.st_model, chains, 100)
+posterior_samples = sample(result.st_model, chains, 50)
 ```
 
 ### Learning Initial Conditions
 
 ```julia
-# Configure learnable initial conditions with constraints
-constraint_u0 = BoxConstraint([1e-3], [5e0])  # Positive initial conditions
+# Learn initial conditions for each data segment
+constraint_u0 = NamedTupleConstraint((; u0 = BoxConstraint([0.1, 0.1], [2.0, 2.0])))  # Reasonable bounds
 infer_ics = InferICs(true, constraint_u0)
 
-# Train with learned initial conditions
-result = train(backend, model, dataloader, infer_ics)
+# Create model for initial condition learning
+ic_model = ARModel(
+    (interaction = interaction_layer, rates = rate_params),
+    ar_step;
+    dt = 0.1,
+)
 
-# Access learned initial conditions for each segment
-for (i, token) in enumerate(tokens(tokenize(dataloader)))
-    ic_params = result.best_model.initial_conditions.ics[i]
-    println("Segment $i initial condition: ", ic_params)
+# Train with learned initial conditions
+result = train(backend, ic_model, dataloader, infer_ics)
+
+# Access learned initial conditions
+for (i, ic) in enumerate(result.ics)
+    println("Segment $i initial condition: ", ic.u0)
 end
 ```
 
 ## 📚 Documentation
 ### Examples
-TO COMPLETE
+
+- **[`data_loading.jl`](examples/data_loading.jl)**: Demonstrates how to use the `SegmentedTimeSeries` data loader for batching and segmentation of time series data.
+
+- **[`sgd_example.jl`](examples/sgd_example.jl)**: Complete example showcasing gradient-based training with the SGD backend using real Lynx-Hare population data.
+
+- **[`mcsampling_example.jl`](examples/mcsampling_example.jl)**: Bayesian parameter estimation example using MCMC sampling with the MCSamplingBackend.
 
 ### API
-Checkout the API documentation.
+Checkout the API documentation  [![docsstbl][docs-stbl]][docsstbl-url] [![docsdev][docs-dev]][docsdev-url] 
 
 ## 🙏 Acknowledgments
 

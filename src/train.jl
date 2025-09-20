@@ -6,6 +6,9 @@ abstract type AbstractOptimBackend end
 
 Training backend using Lux.jl for mode estimation.
 
+!!! warning `Conditional loading`
+  You need to load `Optimisers`, `ComponentArrays` and `Lux` before loading `HybridDynamicModels` to use [SGDBackend](@ref).
+
 ## Arguments
   - `opt`: Optimizers.jl rule for parameter updates.
   - `n_epochs`: Number of training epochs.
@@ -39,6 +42,8 @@ abstract type SGDBackend <: AbstractOptimBackend end
     MCSamplingBackend(sampler, n_iterations, datadistrib; kwargs...)
 
 Training backend for Bayesian inference using Monte Carlo sampling.
+!!! warning `Conditional loading`
+  You need to load `Turing`, `ComponentArrays` and `Lux` before loading `HybridDynamicModels` to use [MCSamplingBackend](@ref).
 
 ## Arguments
   - `sampler`: Turing.jl MCMC sampler.

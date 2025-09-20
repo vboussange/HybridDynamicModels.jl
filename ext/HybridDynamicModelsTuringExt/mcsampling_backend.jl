@@ -110,7 +110,7 @@ function HybridDynamicModels.train(backend::MCSamplingBackend,
 
     turing_fit = create_turing_model(priors, backend.datadistrib, st_model)
 
-    chains = sample(
+    chains = Turing.sample(
         rng, turing_fit(xs, ys), backend.sampler, backend.n_iterations; backend.kwargs...)
     segment_ics = []
     for i in tokens(dataloader)

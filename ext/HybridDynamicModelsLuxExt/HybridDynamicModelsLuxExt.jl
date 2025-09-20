@@ -2,6 +2,7 @@ module HybridDynamicModelsLuxExt
 import LuxCore
 import Lux: Lux, Chain, Training
 import Optimisers
+using Random
 import ComponentArrays: ComponentArray
 using ADTypes
 using ConcreteStructs: @concrete
@@ -28,6 +29,8 @@ end
     loss_fn::Any
     callback::Any
 end
+
+HybridDynamicModels.SGDBackend(args...) = SGDBackend(args...)
 
 function HybridDynamicModels.SGDBackend(opt, n_epochs, adtype, loss_fn)
     return SGDBackend(opt, n_epochs, adtype, loss_fn, _default_callback)
