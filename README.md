@@ -75,7 +75,9 @@ model = ARModel(
 ps, st = Lux.setup(Random.default_rng(), model)
 tsteps = range(0, stop=10.0, step=0.1)
 
-preds, _ = model((; u0 = [1.0, 1.0], tspan = (tsteps[1], tsteps[end]), saveat = tsteps), ps, st)
+preds, _ = model((; u0 = [1.0, 1.0], 
+                tspan = (tsteps[1], tsteps[end]), 
+                saveat = tsteps), ps, st)
 size(preds)  # (2, 101)
 ```
 
@@ -90,7 +92,9 @@ result = train(backend, model, dataloader, InferICs(false))
 
 # Make predictions
 tspan = (tsteps[1], tsteps[end])
-prediction, _ = model((; u0 = result.ics[1].u0, tspan = tspan, saveat = tsteps), result.ps, result.st)
+prediction, _ = model((; u0 = result.ics[1].u0, 
+                        tspan = tspan, 
+                        saveat = tsteps), result.ps, result.st)
 ```
 
 ### Turing backend
@@ -116,7 +120,10 @@ bayesian_model = ARModel(
 # MCMC training
 datadistrib = Normal
 mcmc_backend = MCSamplingBackend(NUTS(0.65), 500, datadistrib)
-result = train(mcmc_backend, bayesian_model, dataloader, InferICs(false))
+result = train(mcmc_backend, 
+                bayesian_model, 
+                dataloader, 
+                InferICs(false))
 
 # Sample from posterior
 chains = result.chains
