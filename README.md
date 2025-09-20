@@ -151,12 +151,7 @@ Checkout the API documentation.
 
 Built on the excellent LuxDL, SciML and TuringLang ecosystem, particularly:
 - [Lux.jl](https://github.com/LuxDL/Lux.jl) for neural networks
+- [Turing.jl](https://github.com/TuringLang/Turing.jl) for Bayesian inference
 - [SciMLSensitivity.jl](https://github.com/SciML/SciMLSensitivity.jl) for automatic differentiation
 - [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) for differential equations
-- [Turing.jl](https://github.com/TuringLang/Turing.jl) for Bayesian inference
-- [Bijectors.jl](https://github.com/TuringLang/Bijectors.jl) for parameter transformations
 
-
-## ⏭️ Roadmap
-- [ ] Implement ARModel
-- [ ] Implement AnalyticModel
