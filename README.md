@@ -1,6 +1,6 @@
 [![Build Status](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-![](docs/src/asssets/logo.svg)
+![](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/docs/src/assets/logo.svg)
 
 # HybridDynamicModels.jl
 
