@@ -42,8 +42,8 @@ Pkg.add("HybridDynamicModels")
 ### Basic Hybrid ODE Model
 
 ```julia
-using HybridDynamicModels
 using Lux, OrdinaryDiffEq, Optimisers
+using HybridDynamicModels
 
 # Define hybrid model layers
 neural_layer = Chain(Dense(2, 2, tanh), Dense(2, 2))
@@ -155,8 +155,3 @@ Built on the excellent LuxDL, SciML and TuringLang ecosystem, particularly:
 - [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) for differential equations
 - [Turing.jl](https://github.com/TuringLang/Turing.jl) for Bayesian inference
 - [Bijectors.jl](https://github.com/TuringLang/Bijectors.jl) for parameter transformations
-
-
-## ⏭️ Roadmap
-- [ ] Implement ARModel
-- [ ] Implement AnalyticModel
