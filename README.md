@@ -144,11 +144,11 @@ end
 ## 📚 Documentation
 ### Examples
 
-- **[`data_loading.jl`](examples/data_loading.jl)**: Demonstrates how to use the `SegmentedTimeSeries` data loader for batching and segmentation of time series data.
+- **[`data_loading.jl`](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/examples/data_loading.jl)**: Demonstrates how to use the `SegmentedTimeSeries` data loader for batching and segmentation of time series data.
 
-- **[`sgd_example.jl`](examples/sgd_example.jl)**: Complete example showcasing gradient-based training with the SGD backend using real Lynx-Hare population data.
+- **[`sgd_example.jl`](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/examples/sgd_example.jl)**: Complete example showcasing gradient-based training with the SGD backend using real Lynx-Hare population data.
 
-- **[`mcsampling_example.jl`](examples/mcsampling_example.jl)**: Bayesian parameter estimation example using MCMC sampling with the MCSamplingBackend.
+- **[`mcsampling_example.jl`](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/examples/mcsampling_example.jl)**: Bayesian parameter estimation example using MCMC sampling with the MCSamplingBackend.
 
 ### API
 See [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/api/).
