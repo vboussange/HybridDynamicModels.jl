@@ -1,7 +1,7 @@
 name = "HybridDynamicModels"
 uuid = "7e133797-8c8e-49d9-acf3-b153daa40e06"
 authors = ["Victor Boussange <vic.boussange@gmail.com> and contributors"]
-version = "0.0.2-DEV"
+version = "0.0.3"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
