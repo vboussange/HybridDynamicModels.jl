@@ -41,16 +41,14 @@ Pkg.add("HybridDynamicModels")
 
 ## 🔥 Quick Start
 
-### Simple Hybrid Model
+### Autoregressive hybrid Model
 
 ```julia
-using Lux, Optimisers, ComponentArrays
 using HybridDynamicModels
-using Zygote
 using Random
 
-# Dense layer for nonlinear interactions
-interaction_layer = Dense(2, 2)
+# Dense layer for interactions
+interaction_layer = Dense(2, 2, tanh)
 
 # Parameter layer for growth/decay rates
 rate_params = ParameterLayer(init_value = (growth = [0.1], decay = [0.05]))
@@ -59,12 +57,12 @@ rate_params = ParameterLayer(init_value = (growth = [0.1], decay = [0.05]))
 function ar_step(layers, u, ps, t)
     # Linear terms from parameters
     params = layers.rates(ps.rates)
-    linear = [params.growth[1] * u[1], -params.decay[1] * u[2]]
+    growth = vcat(params.growth, - params.decay)
     
     # Neural network interactions
-    neural = layers.interaction(u, ps.interaction)
-    
-    return linear + neural
+    interactions = layers.interaction(u, ps.interaction)
+
+    return u .* (growth + interactions)
 end
 
 # Create autoregressive model
@@ -76,11 +74,18 @@ model = ARModel(
 # Setup and train
 ps, st = Lux.setup(Random.default_rng(), model)
 tsteps = range(0, stop=10.0, step=0.1)
+
+preds, _ = model((; u0 = [1.0, 1.0], tspan = (tsteps[1], tsteps[end]), saveat = tsteps), ps, st)
+size(preds)  # (2, 101)
+```
+
+### Lux backend
+
+```julia
 data = rand(2, length(tsteps))
+dataloader = SegmentedTimeSeries((data, tsteps); segment_length=10, shift= 2)
 
-dataloader = SegmentedTimeSeries((data, tsteps); segment_length=20, shift= 2)
-
-backend = SGDBackend(Adam(1e-3), 100, AutoZygote(), MSELoss())
+backend = SGDBackend(Adam(1e-2), 100, AutoZygote(), MSELoss())
 result = train(backend, model, dataloader, InferICs(false))
 
 # Make predictions
@@ -88,7 +93,7 @@ tspan = (tsteps[1], tsteps[end])
 prediction, _ = model((; u0 = result.ics[1].u0, tspan = tspan, saveat = tsteps), result.ps, result.st)
 ```
 
-### Bayesian Parameter Estimation
+### Turing backend
 
 ```julia
 using Distributions, Turing
