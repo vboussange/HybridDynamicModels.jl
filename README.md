@@ -1,30 +1,6 @@
 | **Documentation** | **Build Status** | **Julia** | **Testing** |
 |:-----------------:|:----------------:|:---------:|:-----------:|
-| [![docsstbl][docs-stbl]][docsstbl-url] [![docsdev][docs-dev]][docsdev-url] | [![CI][ci-img]][ci-url] | [![Julia][julia-img]][julia-url] [![Code Style: Blue][style-img]][style-url] | [![Aqua QA][aqua-img]][aqua-url] [![codecov][cc-img]][cc-url] |
-
-[docs-stbl]: https://img.shields.io/badge/docs-stable-blue.svg
-[docsstbl-url]: https://vboussange.github.io/HybridDynamicModels.jl/stable/
-
-[docs-dev]: https://img.shields.io/badge/docs-dev-blue.svg
-[docsdev-url]: https://vboussange.github.io/HybridDynamicModels.jl/dev/
-
-[ci-img]: https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml/badge.svg?branch=main
-[ci-url]: https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml?query=branch%3Amain
-
-[cc-img]: https://codecov.io/gh/vboussange/HybridDynamicModels.jl/branch/main/graph/badge.svg
-[cc-url]: https://codecov.io/gh/vboussange/HybridDynamicModels.jl
-
-[julia-img]: https://img.shields.io/badge/julia-v1.10+-blue.svg
-[julia-url]: https://julialang.org/
-
-[style-img]: https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826
-[style-url]: https://github.com/SciML/SciMLStyle
-
-[aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
-[aqua-url]: https://github.com/JuliaTesting/Aqua.jl
-
-[jet-img]: https://img.shields.io/badge/%E2%9C%88%EF%B8%8F%20tested%20with%20-%20JET.jl%20-%20red
-[jet-url]: https://github.com/aviatesk/JET.jl
+| [![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://vboussange.github.io/HybridDynamicModels.jl/stable/) [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://vboussange.github.io/HybridDynamicModels.jl/dev/) | [![CI](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/vboussange/HybridDynamicModels.jl/actions/workflows/CI.yml?query=branch%3Amain) | [![Julia](https://img.shields.io/badge/julia-v1.10+-blue.svg)](https://julialang.org/) [![Code Style: Blue](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle) | [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl) [![codecov](https://codecov.io/gh/vboussange/HybridDynamicModels.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/vboussange/HybridDynamicModels.jl)
 
 ![](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/docs/src/assets/logo.svg)
 
@@ -175,7 +151,7 @@ end
 - **[`mcsampling_example.jl`](examples/mcsampling_example.jl)**: Bayesian parameter estimation example using MCMC sampling with the MCSamplingBackend.
 
 ### API
-Checkout the API documentation  [![docsstbl][docs-stbl]][docsstbl-url] [![docsdev][docs-dev]][docsdev-url] 
+See [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/api/).
 
 ## 🙏 Acknowledgments
 
