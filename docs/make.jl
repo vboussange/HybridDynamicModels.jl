@@ -1,4 +1,17 @@
 using Documenter, Lux, Turing, ComponentArrays, HybridDynamicModels
+using Weave
+
+example_scripts = ["data_loading.jmd"]
+out_path = joinpath(@__DIR__, "..", "docs", "src", "examples")
+isdir(out_path) || mkpath(out_path)
+println("Weaving example scripts...")
+for script in example_scripts
+    weave(joinpath(@__DIR__, "..", "examples", script); 
+        out_path,
+          doctype = "github")
+end
+
+weaved_examples = [joinpath("examples", replace(script, ".jmd" => ".md")) for script in example_scripts]
 
 readme_str = read(joinpath(@__DIR__, "..", "README.md"), String)
 readme_str = replace(readme_str, "> [!CAUTION]\n> " => "!!! warning\n    ")
@@ -20,6 +33,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Tutorials" => weaved_examples,
         "api.md",
         "dev_guide.md",
     ],

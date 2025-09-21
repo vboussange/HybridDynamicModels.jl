@@ -328,3 +328,19 @@ end
 function _slice_data_from_index(data::Union{Tuple, NamedTuple}, start_idx::Int)
     return map(x -> _slice_data_from_index(x, start_idx), data)
 end
+
+function Base.show(io::IO, sdl::SegmentedTimeSeries)
+    print(io, "SegmentedTimeSeries")
+    
+    # Calculate overlap percentage
+    overlap = sdl.segment_length - sdl.shift
+    overlap_pct = overlap > 0 ? round(100 * overlap / sdl.segment_length, digits=1) : 0.0
+    
+    println(io)
+    println(io, "  Data: ", summary(sdl.data))
+    println(io, "  Segment length: $(sdl.segment_length)")
+    println(io, "  Shift: $(sdl.shift) ($(overlap_pct)% overlap)")
+    println(io, "  Batch size: $(sdl.batchsize)")
+    println(io, "  Total segments: $(sdl.nsegments)")
+    print(io, "  Total batches: $(length(sdl))")
+end
