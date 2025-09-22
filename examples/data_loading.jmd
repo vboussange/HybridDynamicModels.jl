@@ -30,7 +30,7 @@ function plot_segmentation(dataloader)
 end
 ```
 
-## Basic Usage
+## Basic usage
 
 Create synthetic time series data for demonstration:
 
@@ -70,7 +70,7 @@ end
 ```
 
 
-## Segmentation Strategies
+## Segmentation strategies
 
 The following visualization shows how `segment_length` and `shift` parameters affect data segmentation:
 
@@ -114,7 +114,7 @@ token = tokens_list[1]
 segment_data, segment_times = tokenized_dataloader[token]
 ```
 
-## Shuffling and Partial Segments
+## Shuffling and partial segments
 
 By default, segments are processed in deterministic order:
 

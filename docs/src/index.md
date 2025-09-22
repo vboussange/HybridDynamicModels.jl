@@ -28,9 +28,8 @@
 - **`SegmentedTimeSeries`**: Time series data loader with segmentation, implementing mini-batching.
 
 ### **Training API, with following backends** 
-- **`SGDBackend`**: Fast gradient-based optimization with automatic differentiation
-- **`MCSamplingBackend`**: Full Bayesian inference with uncertainty quantification  
-- **`VIBackend`**: Variational inference for scalable approximate Bayesian methods
+- **`SGDBackend`**: Gradient descent optimization with [Optimisers.jl](https://github.com/FluxML/Optimisers.jl) and [Lux.jl training API](https://github.com/LuxDL/Lux.jl)
+- **`MCSamplingBackend`**: Full Bayesian inference with uncertainty quantification using [`DynamicPPL.jl`](https://github.com/TuringLang/DynamicPPL.jl) and [Turing.jl](https://github.com/TuringLang/Turing.jl) and 
 
 ## 📦 Installation
 
@@ -84,6 +83,7 @@ size(preds)  # (2, 101)
 ### Lux backend
 
 ```julia
+using Optimisers
 data = rand(2, length(tsteps))
 dataloader = SegmentedTimeSeries((data, tsteps); segment_length=10, shift= 2)
 
@@ -127,7 +127,7 @@ result = train(mcmc_backend,
 
 # Sample from posterior
 chains = result.chains
-posterior_samples = sample(result.st_model, chains, 50)
+posterior_samples = sample(bayesian_model, chains, 50)
 ```
 
 ### Learning Initial Conditions

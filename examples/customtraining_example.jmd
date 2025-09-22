@@ -4,7 +4,7 @@ The default `train` function is basic and meant for a demonstration purpose. For
 
 This tutorial shows how to build a custom training pipeline that includes validation to prevent overfitting.
 
-## Define a Custom Setup Struct
+## Define a custom setup struct
 
 Create a new struct that inherits from `AbstractSetup`. This struct will hold the validation dataloader.
 
@@ -20,7 +20,7 @@ import Random
 end
 ```
 
-## Implement the Custom Train Method
+## Implement the custom train method
 
 Implement a `train` method that takes your custom setup. This method will train the model while monitoring validation loss.
 
@@ -93,7 +93,7 @@ function HybridDynamicModels.train(backend::SGDBackend,
 end
 ```
 
-## Training Example
+## Training example
 
 To use this custom pipeline, create training and validation dataloaders, set up the custom configuration, and call the train function.
 

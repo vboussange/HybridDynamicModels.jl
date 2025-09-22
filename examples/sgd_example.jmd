@@ -20,7 +20,7 @@ using DataFrames, DelimitedFiles, HTTP
 const luxtype = Lux.f64
 ```
 
-## Data Loading
+## Data loading
 
 Load the Lynx-Hare population dataset:
 
@@ -36,7 +36,7 @@ plot!(plt_data, df_data.Year, df_data.Lynx, label = "Lynx")
 display(plt_data)
 ```
 
-## Data Preparation
+## Data preparation
 
 Prepare training and test datasets:
 
@@ -59,7 +59,7 @@ dataloader_train = SegmentedTimeSeries(
     segment_length = 4, shift = 2, batchsize = 20)
 ```
 
-## Model Definition
+## Model definition
 
 Define a hare-lynx predator-prey model where the predation interaction is learned via neural networks, while birth and death processes follow mechanistic rules:
 
@@ -111,7 +111,7 @@ model = ARModel(
     (;neural_interactions, mechanistic_params),
     ecosystem_step;
     dt = tsteps[2] - tsteps[1],
-)
+);
 ```
 
 ## Training configuration
@@ -147,10 +147,10 @@ Train the model with initial condition inference:
 
 ```julia
 @info "Starting training..."
-result = train(backend, model, dataloader_train, InferICs(true))
+result = train(backend, model, dataloader_train, InferICs(true));
 ```
 
-## Results Visualization
+## Results visualization
 
 Visualize training fit and test predictions for the hare-lynx ecosystem:
 
@@ -219,4 +219,4 @@ plot!(plt_test, tsteps_test, preds[2, :], label = "Lynx Predicted", color = lynx
 
 ## Some final notes
 
-- When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see [`create_train_val_loaders`](@ref)) and modifying the training loop to compute validation loss at intervals, overloading the `train` function. Check out the [Overloading the `train` function](@ref) for an example.
+- When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see [`create_train_val_loaders`](@ref)) and modifying the training loop to compute validation loss at intervals, overloading the `train` function. Check out the [Overloading the `train` function](@ref) tutorial for an example.

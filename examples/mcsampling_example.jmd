@@ -18,7 +18,7 @@ using DataFrames, DelimitedFiles, HTTP
 const luxtype = Lux.f64
 ```
 
-## Data Loading
+## Data loading
 
 Load the Lynx-Hare population dataset:
 
@@ -29,17 +29,17 @@ df_data = DataFrame(Year = data[:, 1], Hare = data[:, 2], Lynx = data[:, 3])
 
 # Visualize observed data (hare and lynx)
 plt_data = plot(df_data.Year, df_data.Hare, label = "Hare", xlabel = "Year",
-    ylabel = "Population", title = "Observed Hare-Lynx Data")
+    ylabel = "Population", title = "")
 plot!(plt_data, df_data.Year, df_data.Lynx, label = "Lynx")
 display(plt_data)
 ```
 
-## Data Preparation
+## Data preparation
 
 Prepare training and test datasets:
 
 ```julia
-tsteps = Vector(df_data.Year) |> luxtype
+tsteps = Vector(df_data.Year)
 
 # Extract hare and lynx data
 hare_lynx_data = Array(df_data[:, Not(:Year)])' |> luxtype
@@ -60,7 +60,7 @@ dataloader_train = SegmentedTimeSeries(
     segment_length = 4, shift = 3, partial_segment = true)
 ```
 
-## Model Definition
+## Model definition
 
 Define a hare-lynx predator-prey model where the predation interaction is learned via neural networks, while birth and death processes follow mechanistic rules:
 
@@ -74,7 +74,7 @@ neural_interactions = Chain(Dense(2, hlsize, relu),
 mechanistic_priors = (
     hare_birth = Uniform(0.1, 3.0),
     hare_death = Uniform(0.1, 3.0),
-    lynx_death = Uniform(0.1, 3.0)
+    lynx_death = Uniform(1e-3, 2.0)
 )
 
 # Priors for neural network weights
@@ -146,7 +146,7 @@ Train the model with Bayesian inference without inferring initial conditions (to
 result = train(backend, model, dataloader_train, InferICs(false));
 ```
 
-## Results Analysis
+## Results analysis
 
 Analyze MCMC chains and posterior distributions:
 
@@ -173,7 +173,7 @@ plot!(trace_plot[4, 1], title = "Lynx Death Rate")
 display(trace_plot)
 ```
 
-## Forecasting with Uncertainty
+## Forecasting with uncertainty
 
 Forecast on test data with uncertainty quantification. For this, we use 
 
