@@ -69,7 +69,7 @@ function Turing.sample(rng::Random.AbstractRNG,
 end
 
 """
-    Turing.sample(model, chain, args...; kwargs...)
+    sample(model, chain, args...; kwargs...)
 
 Extract posterior parameter samples from MCMC chains and convert them to structured parameter format.
 

@@ -1,4 +1,5 @@
 using Documenter, Lux, Turing, ComponentArrays, HybridDynamicModels
+using Random
 using Weave
 
 example_scripts = ["data_loading.jmd",

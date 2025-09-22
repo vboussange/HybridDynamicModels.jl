@@ -1,9 +1,9 @@
-# Bayesian inference with [`MCSampling`](@ref)
+# Bayesian inference with [`MCSamplingBackend`](@ref)
 
 This tutorial demonstrates Bayesian inference for a hybrid autoregressive model of the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes. Uncertainty quantification is performed using Markov Chain Monte Carlo sampling.
 
 !!! note
-    The `train` function provided by `HybridDynamicModels` is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own `train` function to gain more control over the training process; see [Creating Custom Training Pipelines](@ref). Relevant utilities to build custom training pipelines in a Bayesian inference context are [`create_turing_model`](@ref) and [`sample`](@ref).
+    The `train` function provided by `HybridDynamicModels` is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own `train` function to gain more control over the training process; see [Creating Custom Training Pipelines](@ref). A relevant utility function to build custom training pipelines in a Bayesian inference context is [`create_turing_model`](@ref).
 
 ## Importing necessary packages
 In order to use the MCSamplingBackend, we'll need to manually load `Lux`, `Turing`, and `ComponentArrays`. We additionally load `Distributions`, `Plots`, `StatsPlots`, `DataFrames`, `DelimitedFiles`, and `HTTP` for defining priors, data handling and visualization.
@@ -172,7 +172,7 @@ display(trace_plot)
 
 ## Forecasting with Uncertainty
 
-Forecast on test data with uncertainty quantification:
+Forecast on test data with uncertainty quantification. For this, we use 
 
 ```julia
 # Function for forecasting with uncertainty

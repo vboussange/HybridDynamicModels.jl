@@ -1,6 +1,6 @@
-# Data Loading with SegmentedTimeSeries
+# Data Loading with [`SegmentedTimeSeries`](@ref)
 
-This tutorial demonstrates the `SegmentedTimeSeries` data loader for batching and segmentation of time series data.
+This tutorial demonstrates the [`SegmentedTimeSeries`](@ref) data loader for batching and segmentation of time series data.
 
 ```julia; echo = false; results = "hidden"
 using HybridDynamicModels

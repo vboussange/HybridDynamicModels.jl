@@ -4,21 +4,23 @@ The default `train` function is basic and meant for a demonstration purpose. For
 
 This tutorial shows how to build a custom training pipeline that includes validation to prevent overfitting.
 
-## Step 1: Define a Custom Setup Struct
+## Define a Custom Setup Struct
 
 Create a new struct that inherits from `AbstractSetup`. This struct will hold the validation dataloader.
 
 ```julia
 using HybridDynamicModels
 import HybridDynamicModels: AbstractSetup
+import LuxCore: AbstractLuxLayer
 import ConcreteStructs: @concrete
+import Random
 
 @concrete struct WithValidation <: AbstractSetup
     dataloader
 end
 ```
 
-## Step 2: Implement the Custom Train Method
+## Implement the Custom Train Method
 
 Implement a `train` method that takes your custom setup. This method will train the model while monitoring validation loss.
 
@@ -91,7 +93,7 @@ function HybridDynamicModels.train(backend::SGDBackend,
 end
 ```
 
-## Step 3: Use the Custom Training Pipeline
+## Training Example
 
 To use this custom pipeline, create training and validation dataloaders, set up the custom configuration, and call the train function.
 

@@ -1,4 +1,4 @@
-# Training with `[`SGDBackend`](@ref)`
+# Training with [`SGDBackend`](@ref)
 
 This tutorial demonstrates how to use the [`SGDBackend`](@ref) for training a hybrid autoregressive model modelling the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes.
 
@@ -219,4 +219,4 @@ plot!(plt_test, tsteps_test, preds[2, :], label = "Lynx Predicted", color = lynx
 
 ## Some final notes
 
-- When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see [`create_train_val_loaders`](@ref)) and modifying the training loop to compute validation loss at intervals, overloading the `train` function. Check out the [Custom Training Pipelines](@ref) for an example.
+- When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see [`create_train_val_loaders`](@ref)) and modifying the training loop to compute validation loss at intervals, overloading the `train` function. Check out the [Creating Custom Training Pipelines](@ref) for an example.
