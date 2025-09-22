@@ -10,7 +10,7 @@
 
 ---
 
-`HybridDynamicModels.jl` provides a unified framework for building, training, and analyzing hybrid dynamical models that seamlessly integrate traditional scientific models with machine learning layers. Built on `Lux.jl`, it enables both gradient-based optimization and Bayesian inference for uncertainty quantification.
+`HybridDynamicModels.jl` is a toolbox for easily building and training hybrid dynamic models which combine mechanistic and data driven components. Built on top of the deep learning framework `Lux.jl`, it enables both gradient descent optimization and Bayesian inference.
 
 ## 🚀 Key Features
 
