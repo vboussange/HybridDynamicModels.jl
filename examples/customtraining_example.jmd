@@ -1,4 +1,4 @@
-# Creating Custom Training Pipelines
+# Overloading the `train` function
 
 The default `train` function is basic and meant for a demonstration purpose. For more advanced training, you should create your own training pipeline.
 

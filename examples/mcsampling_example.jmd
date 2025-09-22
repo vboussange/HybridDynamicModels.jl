@@ -3,7 +3,7 @@
 This tutorial demonstrates Bayesian inference for a hybrid autoregressive model of the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes. Uncertainty quantification is performed using Markov Chain Monte Carlo sampling.
 
 !!! note
-    The `train` function provided by `HybridDynamicModels` is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own `train` function to gain more control over the training process; see [Creating Custom Training Pipelines](@ref). A relevant utility function to build custom training pipelines in a Bayesian inference context is [`create_turing_model`](@ref).
+    The `train` function provided by `HybridDynamicModels` is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own `train` function to gain more control over the training process; see [Overloading the `train` function](@ref). A relevant utility function to build custom training pipelines in a Bayesian inference context is [`create_turing_model`](@ref).
 
 ## Importing necessary packages
 In order to use the MCSamplingBackend, we'll need to manually load `Lux`, `Turing`, and `ComponentArrays`. We additionally load `Distributions`, `Plots`, `StatsPlots`, `DataFrames`, `DelimitedFiles`, and `HTTP` for defining priors, data handling and visualization.
@@ -51,9 +51,12 @@ data_array = hare_lynx_data |> luxtype
 forecast_length = 10
 test_idx = size(data_array, 2) - forecast_length + 1:size(data_array, 2)
 
+data_array_train = data_array[:, Not(test_idx)]
+tsteps_train = tsteps[Not(test_idx)]
+
 # Create training dataloader
 dataloader_train = SegmentedTimeSeries(
-    (data_array[:, Not(test_idx)], tsteps[Not(test_idx)]);
+    (data_array_train, tsteps_train);
     segment_length = 4, shift = 3, partial_segment = true)
 ```
 
@@ -69,13 +72,13 @@ neural_interactions = Chain(Dense(2, hlsize, relu),
 
 # Bayesian ecological parameters with Uniform priors using same bounds as SGD constraints
 mechanistic_priors = (
-    hare_birth = Uniform(0.1, 2.0),
-    hare_death = Uniform(0.1, 2.0),
-    lynx_death = Uniform(0.1, 2.0)
+    hare_birth = Uniform(0.1, 3.0),
+    hare_death = Uniform(0.1, 3.0),
+    lynx_death = Uniform(0.1, 3.0)
 )
 
 # Priors for neural network weights
-neural_priors =  Normal(0.0, 0.1)  # Prior for neural network weights
+neural_priors =  Normal(0.0, 1.0)  # Prior for neural network weights
 
 # Hybrid ecosystem dynamics
 function ecosystem_step(layers, u, ps, t)
@@ -114,14 +117,14 @@ model = ARModel(
 
 ## Training configuration
 
-Configure Bayesian inference with MCMC sampling:
+Configure Bayesian inference with MCMC sampling. We assume a Normal likelihood for the observed data with a fixed standard deviation.
 
 ```julia
 # MCMC sampler
 sampler = NUTS(0.65)  # No-U-Turn Sampler
 
 # Likelihood distribution
-data_distrib = LogNormal
+data_distrib = x -> Normal(x, 0.2)
 
 rng = MersenneTwister(42)  # For reproducibility
 
@@ -176,13 +179,13 @@ Forecast on test data with uncertainty quantification. For this, we use
 
 ```julia
 # Function for forecasting with uncertainty
-function forecast_with_uncertainty(model, chains, tsteps_test, u0, n_samples)
+function forecast_with_uncertainty(model, chains, tsteps_test, u0, t0, n_samples)
     forecasts = []
     posterior_samples = sample(model, chains, n_samples)
 
     for i in 1:n_samples
 
-        pred, _ = model((; u0 = u0, tspan = (tsteps_test[1], tsteps_test[end]), saveat = tsteps_test), 
+        pred, _ = model((; u0 = u0, tspan = (t0, tsteps_test[end]), saveat = tsteps_test), 
                        posterior_samples[i], result.st_model.st.model)
         push!(forecasts, pred)
     end
@@ -193,39 +196,37 @@ end
 tsteps_test = tsteps[test_idx]
 data_test = data_array[:, test_idx]
 t0 = result.ics[end].t0
+tsteps_last_segment = tsteps_train[tsteps_train .>= t0]
+data_last_segment = data_array_train[:, tsteps_train .>= t0]
 u0 = data_array[:, findfirst(==(t0), tsteps)]  # Initial condition at t0
 
-forecast_predictions = forecast_with_uncertainty(model, chains, tsteps_test, u0, 50)
+tsteps_pred = union(tsteps_last_segment, tsteps_test)
+
+forecast_predictions = forecast_with_uncertainty(model, chains, tsteps_pred, u0, t0, 100)
 
 # Plot forecast with uncertainty
-forecast_plot = plot(title="Bayesian Forecast", xlabel="Year", ylabel="Population", legend=:topright)
+forecast_plot = plot(title="Bayesian forecast", xlabel="Year", ylabel="Population", legend=:topright)
 
 # Training data (last part)
 hare_color = "#ffd166"
 lynx_color = "#ef476f"
 
 # Test data
+scatter!(forecast_plot, tsteps_last_segment, data_last_segment[1, :], 
+         label="Hare Train", color=hare_color, markershape=:circle, markersize=4, alpha=0.7)
+scatter!(forecast_plot, tsteps_last_segment, data_last_segment[2, :], 
+         label="Lynx Train", color=lynx_color, markershape=:circle, markersize=4, alpha=0.7)
 scatter!(forecast_plot, tsteps_test, data_test[1, :], 
          label="Hare Test", color=hare_color, markershape=:diamond, markersize=6, alpha=0.7)
 scatter!(forecast_plot, tsteps_test, data_test[2, :], 
          label="Lynx Test", color=lynx_color, markershape=:diamond, markersize=6, alpha=0.7)
 
 # Forecast uncertainty
-forecast_array = cat(forecast_predictions..., dims=3)
-forecast_mean_hare = mean(forecast_array[1, :, :], dims=2)[:]
-forecast_std_hare = std(forecast_array[1, :, :], dims=2)[:]
-forecast_mean_lynx = mean(forecast_array[2, :, :], dims=2)[:]
-forecast_std_lynx = std(forecast_array[2, :, :], dims=2)[:]
-
-plot!(forecast_plot, tsteps_test, forecast_mean_hare, 
-      label="Hare Forecast (mean)", color=hare_color, linewidth=2, linestyle=:dash)
-plot!(forecast_plot, tsteps_test, forecast_mean_lynx, 
-      label="Lynx Forecast (mean)", color=lynx_color, linewidth=2, linestyle=:dash)
-
-plot!(forecast_plot, tsteps_test, forecast_mean_hare .+ 2*forecast_std_hare,
-      fillrange=forecast_mean_hare .- 2*forecast_std_hare, 
-      alpha=0.3, color=hare_color, label="Hare uncertainty (95%)")
-plot!(forecast_plot, tsteps_test, forecast_mean_lynx .+ 2*forecast_std_lynx,
-      fillrange=forecast_mean_lynx .- 2*forecast_std_lynx, 
-      alpha=0.3, color=lynx_color, label="Lynx uncertainty (95%)")
+for i in 1:length(forecast_predictions)
+    plot!(forecast_plot, tsteps_pred, forecast_predictions[i][1, :], 
+          color=hare_color, alpha=0.1, label=i==1 ? "Hare predicted" : "")
+    plot!(forecast_plot, tsteps_pred, forecast_predictions[i][2, :], 
+          color=lynx_color, alpha=0.1, label=i==1 ? "Lynx predicted" : "")
+end
+display(forecast_plot)
 ```

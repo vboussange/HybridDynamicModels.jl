@@ -6,7 +6,7 @@
 
 # HybridDynamicModels.jl
 
-*A comprehensive toolbox for hybrid dynamical modeling combining domain knowledge with machine learning.*
+*[Lux.jl](https://github.com/LuxDL/Lux.jl) layers and utilities to build and train hybrid dynamic models.*
 
 ---
 
