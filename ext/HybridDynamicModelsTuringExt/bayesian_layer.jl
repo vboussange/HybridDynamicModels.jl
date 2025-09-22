@@ -68,6 +68,20 @@ function Turing.sample(rng::Random.AbstractRNG,
     return samples
 end
 
+"""
+    Turing.sample(model, chain, args...; kwargs...)
+
+Extract posterior parameter samples from MCMC chains and convert them to structured parameter format.
+
+# Arguments
+- `model`: A Lux layer or StatefulLuxLayer with defined priors
+- `chain`: MCMCChains.Chains object containing the posterior samples
+- `args...`: Additional positional arguments passed to Turing.sample
+- `kwargs...`: Additional keyword arguments passed to Turing.sample
+
+# Returns
+A vector of parameter samples in the same nested structure as the model's priors.
+"""
 function Turing.sample(model::Union{LuxCore.AbstractLuxLayer, LuxCore.StatefulLuxLayer},
         chain::Turing.MCMCChains.Chains, args...; kwargs...)
     return Turing.sample(Random.default_rng(), model, chain, args...; kwargs...)

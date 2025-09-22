@@ -2,7 +2,9 @@ using Documenter, Lux, Turing, ComponentArrays, HybridDynamicModels
 using Weave
 
 example_scripts = ["data_loading.jmd",
-    "sgd_example.jmd"]
+    "sgd_example.jmd", 
+    "mcsampling_example.jmd",
+    "customtraining_example.jmd"]
 out_path = joinpath(@__DIR__, "..", "docs", "src", "examples")
 isdir(out_path) || mkpath(out_path)
 println("Weaving example scripts...")
@@ -37,7 +39,6 @@ makedocs(;
         "Home" => "index.md",
         "Tutorials" => weaved_examples,
         "api.md",
-        "dev_guide.md"
     ],
     doctest = false
 )

@@ -1,6 +1,9 @@
-# Training a Simple Hybrid Hare-Lynx Model with SGD
+# Training with `[`SGDBackend`](@ref)`
 
-This tutorial demonstrates gradient-based training of a hybrid autoregressive model for the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes.
+This tutorial demonstrates how to use the [`SGDBackend`](@ref) for training a hybrid autoregressive model modelling the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes.
+
+!!! note
+    The `train` function provided by `HybridDynamicModels` is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own `train` function to gain more control over the training process; see [Creating Custom Training Pipelines](@ref).
 
 ## Importing necessary packages
 In order to use the SGDBackend, we'll need to manually load `Lux`, `Optimisers`, and `ComponentArrays`. We additionally load `Zygote` for automatic differentiation, `ParameterSchedulers` for learning rate scheduling, and `Plots`, `DataFrames`, `DelimitedFiles`, and `HTTP` for data handling and visualization.
@@ -216,4 +219,4 @@ plot!(plt_test, tsteps_test, preds[2, :], label = "Lynx Predicted", color = lynx
 
 ## Some final notes
 
-- When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see [`create_train_val_loaders`](@ref)) and modifying the training loop to compute validation loss at intervals, overloading the `train` function. Check out the [custom training pipeline](@ref) for more details.
+- When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see [`create_train_val_loaders`](@ref)) and modifying the training loop to compute validation loss at intervals, overloading the `train` function. Check out the [Custom Training Pipelines](@ref) for an example.

@@ -70,6 +70,20 @@ julia> backend = MCSamplingBackend(NUTS(0.65), 1000, LogNormal)
 """
 abstract type MCSamplingBackend <: AbstractOptimBackend end
 
+"""
+    create_turing_model(ps_priors, data_distrib, st_model)
+
+Create a Turing model for Bayesian inference from a `BayesianLayer` model.
+
+# Arguments
+- `ps_priors`: A nested structure (typically a NamedTuple) containing prior distributions for model parameters. Each leaf should be a `Distributions.Distribution`.
+- `data_distrib`: A function or distribution constructor that creates the likelihood distribution for observed data points.
+- `st_model`: A stateful Lux model that can be called with parameters to generate predictions.
+
+# Returns
+A function `(xs, ys) -> Turing.Model` that creates a Turing model when given input data `xs` and observed data `ys`.
+"""
+function create_turing_model end
 
 # abstract type VIBackend <: AbstractOptimBackend end
 

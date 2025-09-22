@@ -48,5 +48,6 @@ SGDBackend
 ```@docs
 BayesianLayer
 getpriors
+create_turing_model
 MCSamplingBackend
 ```

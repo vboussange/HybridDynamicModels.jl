@@ -1,11 +1,14 @@
-# Bayesian Inference for a Simple Hybrid Hare-Lynx Model with MCSampling
+# Bayesian inference with [`MCSampling`](@ref)
 
 This tutorial demonstrates Bayesian inference for a hybrid autoregressive model of the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes. Uncertainty quantification is performed using Markov Chain Monte Carlo sampling.
+
+!!! note
+    The `train` function provided by `HybridDynamicModels` is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own `train` function to gain more control over the training process; see [Creating Custom Training Pipelines](@ref). Relevant utilities to build custom training pipelines in a Bayesian inference context are [`create_turing_model`](@ref) and [`sample`](@ref).
 
 ## Importing necessary packages
 In order to use the MCSamplingBackend, we'll need to manually load `Lux`, `Turing`, and `ComponentArrays`. We additionally load `Distributions`, `Plots`, `StatsPlots`, `DataFrames`, `DelimitedFiles`, and `HTTP` for defining priors, data handling and visualization.
 
-```julia
+```julia 
 using Lux, Distributions, Turing, ComponentArrays
 using HybridDynamicModels
 using Random
@@ -19,7 +22,7 @@ const luxtype = Lux.f64
 
 Load the Lynx-Hare population dataset:
 
-```julia
+```julia results = "hidden"
 url = "http://people.whitman.edu/~hundledr/courses/M250F03/LynxHare.txt"
 data = readdlm(IOBuffer(HTTP.get(url).body), ' ') |> luxtype
 df_data = DataFrame(Year = data[:, 1], Hare = data[:, 2], Lynx = data[:, 3])
@@ -192,7 +195,7 @@ data_test = data_array[:, test_idx]
 t0 = result.ics[end].t0
 u0 = data_array[:, findfirst(==(t0), tsteps)]  # Initial condition at t0
 
-forecast_predictions = forecast_with_uncertainty(model, tsteps_test, u0, n_samples)
+forecast_predictions = forecast_with_uncertainty(model, chains, tsteps_test, u0, 50)
 
 # Plot forecast with uncertainty
 forecast_plot = plot(title="Bayesian Forecast", xlabel="Year", ylabel="Population", legend=:topright)

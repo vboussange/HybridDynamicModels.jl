@@ -34,7 +34,7 @@ export train, InferICs
 export SGDBackend
 
 export MCSamplingBackend
-export BayesianLayer, getpriors
+export BayesianLayer, getpriors, create_turing_model
 # export VIBackend
 
 end

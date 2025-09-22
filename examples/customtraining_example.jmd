@@ -1,17 +1,34 @@
-# Custom training pipeline
+# Creating Custom Training Pipelines
 
-The `train` function exposed is minimalistic and provided for demonstration purposes only. It is recommended to implement your own training pipeline for more complex use cases.
+The default `train` function is basic and meant for a demonstration purpose. For more advanced training, you should create your own training pipeline.
 
-To do so, you can create a new struct that inherits from `AbstractSetup` and implement the `train` method. Here is an example of a custom training pipeline that uses a validation loss to avoid overfitting. 
+This tutorial shows how to build a custom training pipeline that includes validation to prevent overfitting.
+
+## Step 1: Define a Custom Setup Struct
+
+Create a new struct that inherits from `AbstractSetup`. This struct will hold the validation dataloader.
 
 ```julia
-import ConcreteStructs: @concrete
+using HybridDynamicModels
 import HybridDynamicModels: AbstractSetup
+import ConcreteStructs: @concrete
 
 @concrete struct WithValidation <: AbstractSetup
-    dataloader <: Union{SegmentedTimeSeries, Nothing}
+    dataloader
 end
 ```
+
+## Step 2: Implement the Custom Train Method
+
+Implement a `train` method that takes your custom setup. This method will train the model while monitoring validation loss.
+
+The method performs these steps:
+
+1. Prepare the training and validation data
+2. Set up the model with a feature wrapper
+3. Initialize the training state
+4. Train for multiple epochs, computing both training and validation loss
+5. Save the best model parameters based on validation loss
 
 ```julia
 function feature_wrapper((batched_segments, batched_tsteps))
@@ -37,7 +54,6 @@ function HybridDynamicModels.train(backend::SGDBackend,
 
     ps, st = luxtype(Lux.setup(rng, model_with_wrapper))
 
-    # Initialize training state
     train_state = Training.TrainState(model_with_wrapper, ps, st, backend.opt)
     best_ps = ps.model
     best_st = st.model
@@ -75,11 +91,14 @@ function HybridDynamicModels.train(backend::SGDBackend,
 end
 ```
 
-Let's see how to use this custom training pipeline with a validation dataloader.
+## Step 3: Use the Custom Training Pipeline
+
+To use this custom pipeline, create training and validation dataloaders, set up the custom configuration, and call the train function.
 
 ```julia
 using Lux, Optimisers, ComponentArrays
 using Zygote
+
 tsteps = range(0, stop=20.0, length=201)
 data = randn(2, length(tsteps))
 
@@ -104,7 +123,6 @@ nn = Chain(
 function ar_step(layers, u, ps, t)
     return layers.nn(u, ps.nn)
 end
-
 
 model = ARModel(
     (;nn),
