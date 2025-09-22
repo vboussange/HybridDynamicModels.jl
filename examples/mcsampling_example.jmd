@@ -1,0 +1,228 @@
+# Bayesian Inference for a Simple Hybrid Hare-Lynx Model with MCSampling
+
+This tutorial demonstrates Bayesian inference for a hybrid autoregressive model of the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes. Uncertainty quantification is performed using Markov Chain Monte Carlo sampling.
+
+## Importing necessary packages
+In order to use the MCSamplingBackend, we'll need to manually load `Lux`, `Turing`, and `ComponentArrays`. We additionally load `Distributions`, `Plots`, `StatsPlots`, `DataFrames`, `DelimitedFiles`, and `HTTP` for defining priors, data handling and visualization.
+
+```julia
+using Lux, Distributions, Turing, ComponentArrays
+using HybridDynamicModels
+using Random
+using Plots, StatsPlots
+using DataFrames, DelimitedFiles, HTTP
+
+const luxtype = Lux.f64
+```
+
+## Data Loading
+
+Load the Lynx-Hare population dataset:
+
+```julia
+url = "http://people.whitman.edu/~hundledr/courses/M250F03/LynxHare.txt"
+data = readdlm(IOBuffer(HTTP.get(url).body), ' ') |> luxtype
+df_data = DataFrame(Year = data[:, 1], Hare = data[:, 2], Lynx = data[:, 3])
+
+# Visualize observed data (hare and lynx)
+plt_data = plot(df_data.Year, df_data.Hare, label = "Hare", xlabel = "Year",
+    ylabel = "Population", title = "Observed Hare-Lynx Data")
+plot!(plt_data, df_data.Year, df_data.Lynx, label = "Lynx")
+display(plt_data)
+```
+
+## Data Preparation
+
+Prepare training and test datasets:
+
+```julia
+tsteps = Vector(df_data.Year) |> luxtype
+
+# Extract hare and lynx data
+hare_lynx_data = Array(df_data[:, Not(:Year)])' |> luxtype
+hare_lynx_data ./= maximum(hare_lynx_data)
+
+# Data array: [hare, lynx]
+data_array = hare_lynx_data |> luxtype
+
+forecast_length = 10
+test_idx = size(data_array, 2) - forecast_length + 1:size(data_array, 2)
+
+# Create training dataloader
+dataloader_train = SegmentedTimeSeries(
+    (data_array[:, Not(test_idx)], tsteps[Not(test_idx)]);
+    segment_length = 4, shift = 3, partial_segment = true)
+```
+
+## Model Definition
+
+Define a hare-lynx predator-prey model where the predation interaction is learned via neural networks, while birth and death processes follow mechanistic rules:
+
+```julia
+# Neural network for hare-lynx predation interactions
+hlsize = 2^2
+neural_interactions = Chain(Dense(2, hlsize, relu),
+                        Dense(hlsize, 1, relu))  # Output: predation rate, enforce non-negativity
+
+# Bayesian ecological parameters with Uniform priors using same bounds as SGD constraints
+mechanistic_priors = (
+    hare_birth = Uniform(0.1, 2.0),
+    hare_death = Uniform(0.1, 2.0),
+    lynx_death = Uniform(0.1, 2.0)
+)
+
+# Priors for neural network weights
+neural_priors =  Normal(0.0, 0.1)  # Prior for neural network weights
+
+# Hybrid ecosystem dynamics
+function ecosystem_step(layers, u, ps, t)
+    hare, lynx = max.(u, 0.)  # Unpack state variables
+    
+    params = layers.mechanistic_params(ps.mechanistic_params)
+    
+    # Neural network: predation rate
+    predation_input = [hare, lynx]
+    predation_rate = layers.neural_interactions(predation_input, ps.neural_interactions)[1]
+    
+    # Mechanistic hare dynamics
+    hare_birth = params.hare_birth[1] * hare
+    hare_predation = -predation_rate * hare * lynx
+    hare_natural_death = -params.hare_death[1] * hare
+    
+    # Mechanistic lynx dynamics
+    lynx_predation_gain = predation_rate * hare * lynx  # Lynx gain from predation
+    lynx_death = -params.lynx_death[1] * lynx
+    
+    # Return derivatives
+    return [
+        hare_birth + hare_predation + hare_natural_death,  # Hare
+        lynx_predation_gain + lynx_death                   # Lynx
+    ]
+end
+
+# Create Bayesian autoregressive model
+model = ARModel(
+    (neural_interactions = BayesianLayer(neural_interactions, neural_priors),
+     mechanistic_params = BayesianLayer(ParameterLayer(), mechanistic_priors)),
+    ecosystem_step;
+    dt = tsteps[2] - tsteps[1],
+)
+```
+
+## Training configuration
+
+Configure Bayesian inference with MCMC sampling:
+
+```julia
+# MCMC sampler
+sampler = NUTS(0.65)  # No-U-Turn Sampler
+
+# Likelihood distribution
+data_distrib = LogNormal
+
+rng = MersenneTwister(42)  # For reproducibility
+
+# Training backend configuration
+backend = MCSamplingBackend(
+    sampler,      # MCMC sampler
+    1000,          # Number of MCMC samples
+    data_distrib;  # Likelihood distribution
+    rng
+)
+```
+
+## Training
+
+Train the model with Bayesian inference without inferring initial conditions (to reduce computation time for this example):
+
+```julia
+@info "Starting Bayesian training..."
+result = train(backend, model, dataloader_train, InferICs(false));
+```
+
+## Results Analysis
+
+Analyze MCMC chains and posterior distributions:
+
+```julia
+# Extract MCMC chains
+chains = result.chains
+
+@info "MCMC Summary:"
+display(chains)
+```
+
+We plot the posterior distributions of key parameters:
+```julia
+# Plot parameter traces
+trace_plot = plot(chains[["model_neural_interactions_layer_1_weight[1, 1]", 
+                            "model_mechanistic_params_hare_birth", 
+                            "model_mechanistic_params_hare_death", 
+                            "model_mechanistic_params_lynx_death"]], title="Parameter Traces")
+plot!(trace_plot[1, 1], title = "Neural Network Weight[1,1]")
+plot!(trace_plot[2, 1], title = "Hare Birth Rate")
+plot!(trace_plot[3, 1], title = "Hare Death Rate")
+plot!(trace_plot[4, 1], title = "Lynx Death Rate")
+[plot!(trace_plot[i, 2], title = "") for i in 1:4]
+display(trace_plot)
+```
+
+## Forecasting with Uncertainty
+
+Forecast on test data with uncertainty quantification:
+
+```julia
+# Function for forecasting with uncertainty
+function forecast_with_uncertainty(model, chains, tsteps_test, u0, n_samples)
+    forecasts = []
+    posterior_samples = sample(model, chains, n_samples)
+
+    for i in 1:n_samples
+
+        pred, _ = model((; u0 = u0, tspan = (tsteps_test[1], tsteps_test[end]), saveat = tsteps_test), 
+                       posterior_samples[i], result.st_model.st.model)
+        push!(forecasts, pred)
+    end
+    
+    return forecasts
+end
+
+tsteps_test = tsteps[test_idx]
+data_test = data_array[:, test_idx]
+t0 = result.ics[end].t0
+u0 = data_array[:, findfirst(==(t0), tsteps)]  # Initial condition at t0
+
+forecast_predictions = forecast_with_uncertainty(model, tsteps_test, u0, n_samples)
+
+# Plot forecast with uncertainty
+forecast_plot = plot(title="Bayesian Forecast", xlabel="Year", ylabel="Population", legend=:topright)
+
+# Training data (last part)
+hare_color = "#ffd166"
+lynx_color = "#ef476f"
+
+# Test data
+scatter!(forecast_plot, tsteps_test, data_test[1, :], 
+         label="Hare Test", color=hare_color, markershape=:diamond, markersize=6, alpha=0.7)
+scatter!(forecast_plot, tsteps_test, data_test[2, :], 
+         label="Lynx Test", color=lynx_color, markershape=:diamond, markersize=6, alpha=0.7)
+
+# Forecast uncertainty
+forecast_array = cat(forecast_predictions..., dims=3)
+forecast_mean_hare = mean(forecast_array[1, :, :], dims=2)[:]
+forecast_std_hare = std(forecast_array[1, :, :], dims=2)[:]
+forecast_mean_lynx = mean(forecast_array[2, :, :], dims=2)[:]
+forecast_std_lynx = std(forecast_array[2, :, :], dims=2)[:]
+
+plot!(forecast_plot, tsteps_test, forecast_mean_hare, 
+      label="Hare Forecast (mean)", color=hare_color, linewidth=2, linestyle=:dash)
+plot!(forecast_plot, tsteps_test, forecast_mean_lynx, 
+      label="Lynx Forecast (mean)", color=lynx_color, linewidth=2, linestyle=:dash)
+
+plot!(forecast_plot, tsteps_test, forecast_mean_hare .+ 2*forecast_std_hare,
+      fillrange=forecast_mean_hare .- 2*forecast_std_hare, 
+      alpha=0.3, color=hare_color, label="Hare uncertainty (95%)")
+plot!(forecast_plot, tsteps_test, forecast_mean_lynx .+ 2*forecast_std_lynx,
+      fillrange=forecast_mean_lynx .- 2*forecast_std_lynx, 
+      alpha=0.3, color=lynx_color, label="Lynx uncertainty (95%)")
+```

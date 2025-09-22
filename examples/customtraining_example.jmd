@@ -1,0 +1,121 @@
+# Custom training pipeline
+
+The `train` function exposed is minimalistic and provided for demonstration purposes only. It is recommended to implement your own training pipeline for more complex use cases.
+
+To do so, you can create a new struct that inherits from `AbstractSetup` and implement the `train` method. Here is an example of a custom training pipeline that uses a validation loss to avoid overfitting. 
+
+```julia
+import ConcreteStructs: @concrete
+import HybridDynamicModels: AbstractSetup
+
+@concrete struct WithValidation <: AbstractSetup
+    dataloader <: Union{SegmentedTimeSeries, Nothing}
+end
+```
+
+```julia
+function feature_wrapper((batched_segments, batched_tsteps))
+    return [(; u0 = batched_segments[:, 1, i],
+                saveat = batched_tsteps[:, i],
+                tspan = (batched_tsteps[1, i], batched_tsteps[end, i])
+            )
+            for i in 1:size(batched_tsteps, 2)]
+end
+
+function HybridDynamicModels.train(backend::SGDBackend,
+        model::AbstractLuxLayer,
+        dataloader_train::SegmentedTimeSeries,
+        experimental_setup::WithValidation,
+        rng = Random.default_rng(),
+        luxtype = Lux.f64)
+    dataloader_train = luxtype(dataloader_train)
+    dataloader_valid = luxtype(experimental_setup.dataloader)
+
+    @assert length(dataloader_train)==length(dataloader_valid) "The training and validation dataloaders must have the same number of segments"
+
+    model_with_wrapper = Chain((; wrapper = Lux.WrappedFunction(feature_wrapper), model = model))
+
+    ps, st = luxtype(Lux.setup(rng, model_with_wrapper))
+
+    # Initialize training state
+    train_state = Training.TrainState(model_with_wrapper, ps, st, backend.opt)
+    best_ps = ps.model
+    best_st = st.model
+
+    best_loss = luxtype(Inf)
+    for epoch in 1:(backend.n_epochs)
+        train_loss = luxtype(0.0)
+        for (batched_segments, batched_tsteps) in dataloader_train
+            _, loss, _, train_state = Training.single_train_step!(
+                backend.adtype,
+                backend.loss_fn,
+                ((batched_segments, batched_tsteps), batched_segments),
+                train_state)
+            train_loss += loss
+        end
+
+        valid_loss = 0.0
+        ps, st = train_state.parameters, train_state.states
+
+        for (batched_segments, batched_data) in dataloader_valid
+            segment_pred, _ = model_with_wrapper((batched_segments, batched_data), ps, st)
+            valid_loss += backend.loss_fn(segment_pred, batched_segments)
+        end
+
+        println("Train loss: $train_loss")
+        println("Validation loss: $valid_loss")
+        if valid_loss < best_loss
+            best_ps = ps.model
+            best_st = st.model
+            best_loss = train_loss
+        end
+    end
+
+    return (; ps = best_ps, st = best_st)
+end
+```
+
+Let's see how to use this custom training pipeline with a validation dataloader.
+
+```julia
+using Lux, Optimisers, ComponentArrays
+using Zygote
+tsteps = range(0, stop=20.0, length=201)
+data = randn(2, length(tsteps))
+
+segment_length = 20
+valid_length = 2
+batchsize = 4
+
+dataloader_train, dataloader_valid = create_train_val_loaders((data, tsteps);
+                                                                segment_length,
+                                                                valid_length,
+                                                                batchsize,
+                                                                partial_batch = true)
+
+setup = WithValidation(dataloader_valid)
+
+nn = Chain(
+    Dense(2, 16, relu),
+    Dense(16, 16, relu),
+    Dense(16, 2)
+)
+
+function ar_step(layers, u, ps, t)
+    return layers.nn(u, ps.nn)
+end
+
+
+model = ARModel(
+    (;nn),
+    ar_step;
+    dt = tsteps[2] - tsteps[1],
+)
+
+backend = SGDBackend(Adam(0.01),
+                    10,
+                    AutoZygote(),
+                    MSELoss())
+
+train(backend, model, dataloader_train, setup);
+```
