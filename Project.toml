@@ -5,7 +5,6 @@ version = "0.0.5"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
@@ -25,8 +24,11 @@ HybridDynamicModelsTuringExt = ["Turing", "Lux", "ComponentArrays"]
 
 [compat]
 ADTypes = "1.18.0"
+ComponentArrays = "0.15"
+ConcreteStructs = "0.2"
 DiffEqBase = "6.185.0"
 Functors = "0.5"
+LogExpFunctions = "0.3"
 Lux = "= 1.17"
 LuxCore = "1.4"
 Optimisers = "0.4"
