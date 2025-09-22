@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Training with SGDBackend · HybridDynamicModels.jl</title><meta name="title" content="Training with SGDBackend · HybridDynamicModels.jl"/><meta property="og:title" content="Training with SGDBackend · HybridDynamicModels.jl"/><meta property="twitter:title" content="Training with SGDBackend · HybridDynamicModels.jl"/><meta name="description" content="Documentation for HybridDynamicModels.jl."/><meta property="og:description" content="Documentation for HybridDynamicModels.jl."/><meta property="twitter:description" content="Documentation for HybridDynamicModels.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="HybridDynamicModels.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HybridDynamicModels.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../data_loading/">Data Loading with <code>SegmentedTimeSeries</code></a></li><li class="is-active"><a class="tocitem" href>Training with <code>SGDBackend</code></a><ul class="internal"><li><a class="tocitem" href="#Importing-necessary-packages"><span>Importing necessary packages</span></a></li><li><a class="tocitem" href="#Data-loading"><span>Data loading</span></a></li><li><a class="tocitem" href="#Data-preparation"><span>Data preparation</span></a></li><li><a class="tocitem" href="#Model-definition"><span>Model definition</span></a></li><li><a class="tocitem" href="#Training-configuration"><span>Training configuration</span></a></li><li><a class="tocitem" href="#Training"><span>Training</span></a></li><li><a class="tocitem" href="#Results-visualization"><span>Results visualization</span></a></li><li><a class="tocitem" href="#Some-final-notes"><span>Some final notes</span></a></li></ul></li><li><a class="tocitem" href="../mcsampling_example/">Bayesian inference with <code>MCSamplingBackend</code></a></li><li><a class="tocitem" href="../customtraining_example/">Overloading the <code>train</code> function</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Training with <code>SGDBackend</code></a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Training with <code>SGDBackend</code></a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/vboussange/HybridDynamicModels.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/vboussange/HybridDynamicModels.jl/blob/main/docs/src/examples/sgd_example.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Training-with-[SGDBackend](@ref)"><a class="docs-heading-anchor" href="#Training-with-[SGDBackend](@ref)">Training with <a href="../../api/#HybridDynamicModels.SGDBackend"><code>SGDBackend</code></a></a><a id="Training-with-[SGDBackend](@ref)-1"></a><a class="docs-heading-anchor-permalink" href="#Training-with-[SGDBackend](@ref)" title="Permalink"></a></h1><p>This tutorial demonstrates how to use the <a href="../../api/#HybridDynamicModels.SGDBackend"><code>SGDBackend</code></a> for training a hybrid autoregressive model modelling the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes.</p><div class="admonition is-info" id="Note-ed428824ff380ee0"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-ed428824ff380ee0" title="Permalink"></a></header><div class="admonition-body"><p>The <a href="../../api/#HybridDynamicModels.train"><code>train</code></a> function provided by <code>HybridDynamicModels</code> is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own <code>train</code> function to gain more control over the training process; see <a href="../customtraining_example/#Overloading-the-train-function">Overloading the <code>train</code> function</a>.</p></div></div><h2 id="Importing-necessary-packages"><a class="docs-heading-anchor" href="#Importing-necessary-packages">Importing necessary packages</a><a id="Importing-necessary-packages-1"></a><a class="docs-heading-anchor-permalink" href="#Importing-necessary-packages" title="Permalink"></a></h2><p>In order to use the SGDBackend, we&#39;ll need to manually load <code>Lux</code>, <code>Optimisers</code>, and <code>ComponentArrays</code>. We additionally load <code>Zygote</code> for automatic differentiation, <code>ParameterSchedulers</code> for learning rate scheduling, and <code>Plots</code>, <code>DataFrames</code>, <code>DelimitedFiles</code>, and <code>HTTP</code> for data handling and visualization.</p><pre><code class="language-julia hljs">using Lux, Optimisers, ComponentArrays
+using Zygote
+using HybridDynamicModels
+using ParameterSchedulers
+using Random
+using Plots
+using DataFrames, DelimitedFiles, HTTP
+
+const luxtype = Lux.f64</code></pre><pre><code class="nohighlight hljs">f64 (generic function with 1 method)</code></pre><h2 id="Data-loading"><a class="docs-heading-anchor" href="#Data-loading">Data loading</a><a id="Data-loading-1"></a><a class="docs-heading-anchor-permalink" href="#Data-loading" title="Permalink"></a></h2><p>Load the Lynx-Hare population dataset:</p><pre><code class="language-julia hljs">url = &quot;http://people.whitman.edu/~hundledr/courses/M250F03/LynxHare.txt&quot;
+data = readdlm(IOBuffer(HTTP.get(url).body), &#39; &#39;) |&gt; luxtype
+df_data = DataFrame(Year = data[:, 1], Hare = data[:, 2], Lynx = data[:, 3])
+
+# Visualize observed data (hare and lynx)
+plt_data = plot(df_data.Year, df_data.Hare, label = &quot;Hare&quot;, xlabel = &quot;Year&quot;,
+    ylabel = &quot;Population&quot;, title = &quot;Observed Hare-Lynx Data&quot;)
+plot!(plt_data, df_data.Year, df_data.Lynx, label = &quot;Lynx&quot;)
+display(plt_data)</code></pre><p><img src="../figures/sgd_example_2_1.png" alt/></p><h2 id="Data-preparation"><a class="docs-heading-anchor" href="#Data-preparation">Data preparation</a><a id="Data-preparation-1"></a><a class="docs-heading-anchor-permalink" href="#Data-preparation" title="Permalink"></a></h2><p>Prepare training and test datasets:</p><pre><code class="language-julia hljs">tsteps = Vector(df_data.Year) |&gt; luxtype
+
+# Extract hare and lynx data
+hare_lynx_data = Array(df_data[:, Not(:Year)])&#39; |&gt; luxtype
+hare_lynx_data ./= maximum(hare_lynx_data)
+
+# Data array: [hare, lynx]
+data_array = hare_lynx_data |&gt; luxtype
+
+forecast_length = 20
+test_idx = size(data_array, 2) - forecast_length + 1:size(data_array, 2)
+
+# Create training dataloader
+dataloader_train = SegmentedTimeSeries(
+    (data_array[:, Not(test_idx)], tsteps[Not(test_idx)]);
+    segment_length = 4, shift = 2, batchsize = 20)</code></pre><pre><code class="nohighlight hljs">SegmentedTimeSeries
+  Time series length: 71
+  Segment length: 4
+  Shift: 2 (50.0% overlap)
+  Batch size: 20
+  Total segments: 34
+  Total batches: 1</code></pre><h2 id="Model-definition"><a class="docs-heading-anchor" href="#Model-definition">Model definition</a><a id="Model-definition-1"></a><a class="docs-heading-anchor-permalink" href="#Model-definition" title="Permalink"></a></h2><p>Define a hare-lynx predator-prey model where the predation interaction is learned via neural networks, while birth and death processes follow mechanistic rules:</p><pre><code class="language-julia hljs"># Neural network for hare-lynx predation interactions
+hlsize = 2^4
+neural_interactions = Chain(Dense(2, hlsize, relu),
+                        Dense(hlsize, hlsize, relu),
+                        Dense(hlsize, 1))  # Output: predation rate
+
+# Learnable ecological parameters
+mechanistic_params = ParameterLayer(init_value = (
+                                    hare_birth = [0.8],
+                                    hare_death = [0.1],
+                                    lynx_death = [0.2] ), 
+                                    constraint = NamedTupleConstraint((hare_birth = BoxConstraint([0.0], [2.0]),
+                                                                       hare_death = BoxConstraint([0.001], [1.0]),
+                                                                       lynx_death = BoxConstraint([0.001], [1.0]))
+                                ))
+
+# Hybrid ecosystem dynamics
+function ecosystem_step(layers, u, ps, t)
+    hare, lynx = max.(u, 0.)  # Unpack state variables
+    
+    params = layers.mechanistic_params(ps.mechanistic_params)
+    
+    # Neural network: predation rate
+    predation_input = [hare, lynx]
+    predation_rate = layers.neural_interactions(predation_input, ps.neural_interactions)[1]
+    
+    # Mechanistic hare dynamics
+    hare_birth = params.hare_birth[1] * hare
+    hare_predation = -predation_rate * hare * lynx
+    hare_natural_death = -params.hare_death[1] * hare
+    
+    # Mechanistic lynx dynamics
+    lynx_predation_gain = predation_rate * hare * lynx  # Lynx gain from predation
+    lynx_death = -params.lynx_death[1] * lynx
+    
+    # Return derivatives
+    return [
+        hare_birth + hare_predation + hare_natural_death,  # Hare
+        lynx_predation_gain + lynx_death                   # Lynx
+    ]
+end
+
+# Create autoregressive model
+model = ARModel(
+    (;neural_interactions, mechanistic_params),
+    ecosystem_step;
+    dt = tsteps[2] - tsteps[1],
+);</code></pre><h2 id="Training-configuration"><a class="docs-heading-anchor" href="#Training-configuration">Training configuration</a><a id="Training-configuration-1"></a><a class="docs-heading-anchor-permalink" href="#Training-configuration" title="Permalink"></a></h2><p>Configure training with learning rate scheduling and callbacks:</p><pre><code class="language-julia hljs"># Learning rate schedule: exponential decay
+lr_schedule = Step(1e-2, 0.9, 200)
+
+# Callback for monitoring and learning rate adjustment
+function callback(loss, epoch, ts)
+    if epoch % 20 == 0
+        current_lr = lr_schedule(epoch)
+        @info &quot;Epoch $epoch: Loss = $loss, LR = $current_lr&quot;
+        Optimisers.adjust!(ts.optimizer_state, current_lr)
+    end
+end
+
+# Training backend configuration
+backend = SGDBackend(
+    AdamW(eta = 1e-2, lambda = 1e-4),  # Optimizer with weight decay
+    2000,                             # Number of epochs
+    AutoZygote(),                     # Automatic differentiation
+    MSELoss(),                        # Loss function
+    callback                          # Training callback
+)</code></pre><pre><code class="nohighlight hljs">HybridDynamicModelsLuxExt.SGDBackend(AdamW(eta=0.01, beta=(0.9, 0.999), lam
+bda=0.0001, epsilon=1.0e-8, couple=true), 2000, AutoZygote(), GenericLossFu
+nction{typeof(Lux.LossFunctionImpl.l2_distance_loss), typeof(mean)}(Lux.Los
+sFunctionImpl.l2_distance_loss, Statistics.mean), Main.var&quot;##WeaveSandBox#2
+37&quot;.callback)</code></pre><h2 id="Training"><a class="docs-heading-anchor" href="#Training">Training</a><a id="Training-1"></a><a class="docs-heading-anchor-permalink" href="#Training" title="Permalink"></a></h2><p>Train the model with initial condition inference:</p><pre><code class="language-julia hljs">@info &quot;Starting training...&quot;
+result = train(backend, model, dataloader_train, InferICs(true));</code></pre><pre><code class="nohighlight hljs">Starting training...
+Epoch 20: Loss = 0.0392483332436613, LR = 0.01
+Epoch 40: Loss = 0.028094895574984596, LR = 0.01
+Epoch 60: Loss = 0.022576789700005997, LR = 0.01
+Epoch 80: Loss = 0.019105415434885788, LR = 0.01
+Epoch 100: Loss = 0.016852765213063507, LR = 0.01
+Epoch 120: Loss = 0.015204710713806645, LR = 0.01
+Epoch 140: Loss = 0.013979508467981062, LR = 0.01
+Epoch 160: Loss = 0.013030371518112238, LR = 0.01
+Epoch 180: Loss = 0.012272580643447526, LR = 0.01
+Epoch 200: Loss = 0.011841506490843777, LR = 0.01
+Epoch 220: Loss = 0.011536961368827762, LR = 0.009000000000000001
+Epoch 240: Loss = 0.011344155509223203, LR = 0.009000000000000001
+Epoch 260: Loss = 0.011191784733103984, LR = 0.009000000000000001
+Epoch 280: Loss = 0.011063970400957218, LR = 0.009000000000000001
+Epoch 300: Loss = 0.010931414061019473, LR = 0.009000000000000001
+Epoch 320: Loss = 0.010795774819164248, LR = 0.009000000000000001
+Epoch 340: Loss = 0.01092556054761835, LR = 0.009000000000000001
+Epoch 360: Loss = 0.010642419839491931, LR = 0.009000000000000001
+Epoch 380: Loss = 0.010557108115949851, LR = 0.009000000000000001
+Epoch 400: Loss = 0.010514672823272338, LR = 0.009000000000000001
+Epoch 420: Loss = 0.010478928031302303, LR = 0.008100000000000001
+Epoch 440: Loss = 0.010436765377713004, LR = 0.008100000000000001
+Epoch 460: Loss = 0.010450541083594523, LR = 0.008100000000000001
+Epoch 480: Loss = 0.010437850398166562, LR = 0.008100000000000001
+Epoch 500: Loss = 0.010383771180976418, LR = 0.008100000000000001
+Epoch 520: Loss = 0.010357303468126518, LR = 0.008100000000000001
+Epoch 540: Loss = 0.010338298000259016, LR = 0.008100000000000001
+Epoch 560: Loss = 0.010319346508908884, LR = 0.008100000000000001
+Epoch 580: Loss = 0.010326869044659561, LR = 0.008100000000000001
+Epoch 600: Loss = 0.010301774139858881, LR = 0.008100000000000001
+Epoch 620: Loss = 0.01062972184173348, LR = 0.007290000000000001
+Epoch 640: Loss = 0.01030397339965036, LR = 0.007290000000000001
+Epoch 660: Loss = 0.010251412856769396, LR = 0.007290000000000001
+Epoch 680: Loss = 0.010216729738226443, LR = 0.007290000000000001
+Epoch 700: Loss = 0.01018592956348342, LR = 0.007290000000000001
+Epoch 720: Loss = 0.010169861315800074, LR = 0.007290000000000001
+Epoch 740: Loss = 0.010173459400024731, LR = 0.007290000000000001
+Epoch 760: Loss = 0.010137321186514425, LR = 0.007290000000000001
+Epoch 780: Loss = 0.010096621786319643, LR = 0.007290000000000001
+Epoch 800: Loss = 0.010231937750463637, LR = 0.007290000000000001
+Epoch 820: Loss = 0.010122428377756648, LR = 0.006561
+Epoch 840: Loss = 0.010207158265475014, LR = 0.006561
+Epoch 860: Loss = 0.010038552697762599, LR = 0.006561
+Epoch 880: Loss = 0.010007180060674073, LR = 0.006561
+Epoch 900: Loss = 0.009978034122983126, LR = 0.006561
+Epoch 920: Loss = 0.009951621980096909, LR = 0.006561
+Epoch 940: Loss = 0.009935627424348134, LR = 0.006561
+Epoch 960: Loss = 0.009926077408100887, LR = 0.006561
+Epoch 980: Loss = 0.009952023613870263, LR = 0.006561
+Epoch 1000: Loss = 0.009894035587537273, LR = 0.006561
+Epoch 1020: Loss = 0.009919666748078145, LR = 0.005904900000000001
+Epoch 1040: Loss = 0.009853847063202895, LR = 0.005904900000000001
+Epoch 1060: Loss = 0.009847657098072834, LR = 0.005904900000000001
+Epoch 1080: Loss = 0.009819999397154455, LR = 0.005904900000000001
+Epoch 1100: Loss = 0.009814384443205195, LR = 0.005904900000000001
+Epoch 1120: Loss = 0.009794387249259582, LR = 0.005904900000000001
+Epoch 1140: Loss = 0.009781852197099285, LR = 0.005904900000000001
+Epoch 1160: Loss = 0.009768344541296494, LR = 0.005904900000000001
+Epoch 1180: Loss = 0.009763529967680517, LR = 0.005904900000000001
+Epoch 1200: Loss = 0.00989586743317954, LR = 0.005904900000000001
+Epoch 1220: Loss = 0.009747976183021952, LR = 0.00531441
+Epoch 1240: Loss = 0.009736212381891304, LR = 0.00531441
+Epoch 1260: Loss = 0.009777034719947645, LR = 0.00531441
+Epoch 1280: Loss = 0.00972288460435337, LR = 0.00531441
+Epoch 1300: Loss = 0.009698096997775884, LR = 0.00531441
+Epoch 1320: Loss = 0.009692279325701547, LR = 0.00531441
+Epoch 1340: Loss = 0.009684290969193082, LR = 0.00531441
+Epoch 1360: Loss = 0.009666638045961929, LR = 0.00531441
+Epoch 1380: Loss = 0.009654315538592714, LR = 0.00531441
+Epoch 1400: Loss = 0.009651644574530391, LR = 0.00531441
+Epoch 1420: Loss = 0.009643008323077008, LR = 0.004782969000000001
+Epoch 1440: Loss = 0.009628091695539956, LR = 0.004782969000000001
+Epoch 1460: Loss = 0.00962219679856506, LR = 0.004782969000000001
+Epoch 1480: Loss = 0.00961955485500696, LR = 0.004782969000000001
+Epoch 1500: Loss = 0.009614721669015943, LR = 0.004782969000000001
+Epoch 1520: Loss = 0.00960675014210912, LR = 0.004782969000000001
+Epoch 1540: Loss = 0.00960586352930695, LR = 0.004782969000000001
+Epoch 1560: Loss = 0.009597334417474544, LR = 0.004782969000000001
+Epoch 1580: Loss = 0.009583545922874973, LR = 0.004782969000000001
+Epoch 1600: Loss = 0.00964425286475096, LR = 0.004782969000000001
+Epoch 1620: Loss = 0.009603088081623194, LR = 0.004304672100000001
+Epoch 1640: Loss = 0.009574490311016943, LR = 0.004304672100000001
+Epoch 1660: Loss = 0.009567395321614307, LR = 0.004304672100000001
+Epoch 1680: Loss = 0.009559521372718968, LR = 0.004304672100000001
+Epoch 1700: Loss = 0.009559992909146199, LR = 0.004304672100000001
+Epoch 1720: Loss = 0.009550758959274444, LR = 0.004304672100000001
+Epoch 1740: Loss = 0.009547800917023577, LR = 0.004304672100000001
+Epoch 1760: Loss = 0.009547224742076893, LR = 0.004304672100000001
+Epoch 1780: Loss = 0.009543149041533538, LR = 0.004304672100000001
+Epoch 1800: Loss = 0.009538898140036165, LR = 0.004304672100000001
+Epoch 1820: Loss = 0.009544578885200976, LR = 0.003874204890000001
+Epoch 1840: Loss = 0.009539455389616602, LR = 0.003874204890000001
+Epoch 1860: Loss = 0.009528880291938392, LR = 0.003874204890000001
+Epoch 1880: Loss = 0.009526360310537468, LR = 0.003874204890000001
+Epoch 1900: Loss = 0.009530330833179316, LR = 0.003874204890000001
+Epoch 1920: Loss = 0.009530233543491954, LR = 0.003874204890000001
+Epoch 1940: Loss = 0.009522749827942182, LR = 0.003874204890000001
+Epoch 1960: Loss = 0.00952491225274473, LR = 0.003874204890000001
+Epoch 1980: Loss = 0.009524765238410967, LR = 0.003874204890000001
+Epoch 2000: Loss = 0.00951870410706622, LR = 0.003874204890000001</code></pre><h2 id="Results-visualization"><a class="docs-heading-anchor" href="#Results-visualization">Results visualization</a><a id="Results-visualization-1"></a><a class="docs-heading-anchor-permalink" href="#Results-visualization" title="Permalink"></a></h2><p>Visualize training fit and test predictions for the hare-lynx ecosystem:</p><pre><code class="language-julia hljs">
+# Colors: blue for hare, red for lynx
+hare_color = &quot;#ffd166&quot;
+lynx_color = &quot;#ef476f&quot;
+
+# Function to plot training results
+function plot_training_results(dataloader, result, model)
+    plt = plot(title = &quot;Training Results&quot;, xlabel = &quot;Year&quot;,
+        ylabel = &quot;Population&quot;, legend = :topright)
+
+    dataloader_tokenized = tokenize(dataloader)
+
+    for tok in tokens(dataloader_tokenized)
+        segment_data, segment_tsteps = dataloader_tokenized[tok]
+        ics = result.ics[tok].u0
+
+        pred, _ = model(
+            (; u0 = ics, saveat = segment_tsteps,
+                tspan = (segment_tsteps[1], segment_tsteps[end])),
+            result.ps, result.st)
+
+        # Plot observed data
+        scatter!(plt, segment_tsteps, segment_data[1, :],
+            label = (tok == 1 ? &quot;Hare Data&quot; : &quot;&quot;),
+            color = hare_color, markersize = 4, alpha = 0.7)
+        scatter!(plt, segment_tsteps, segment_data[2, :],
+            label = (tok == 1 ? &quot;Lynx Data&quot; : &quot;&quot;),
+            color = lynx_color, markersize = 4, alpha = 0.7)
+
+        # Plot predictions
+        plot!(plt, segment_tsteps, pred[1, :],
+            label = (tok == 1 ? &quot;Hare Predicted&quot; : &quot;&quot;),
+            color = hare_color, linewidth = 2)
+        plot!(plt, segment_tsteps, pred[2, :],
+            label = (tok == 1 ? &quot;Lynx Predicted&quot; : &quot;&quot;),
+            color = lynx_color, linewidth = 2)
+    end
+    return plt
+end
+
+# Plot training results
+plt_train = plot_training_results(dataloader_train, result, model)</code></pre><p><img src="../figures/sgd_example_7_1.png" alt/></p><p>Forecast on test data:</p><pre><code class="language-julia hljs">tsteps_test = tsteps[test_idx]
+data_test = data_array[:, test_idx]
+u0, t0 = result.ics[end]
+
+preds, _ = model((; u0 = u0, tspan = (t0, tsteps_test[end]), saveat = tsteps_test),
+                result.ps, result.st)
+
+# Plot test predictions
+plt_test = plot(title = &quot;Test Predictions&quot;, xlabel = &quot;Year&quot;, ylabel = &quot;Population&quot;, legend = :topright)
+scatter!(plt_test, tsteps_test, data_test[1, :], label = &quot;Hare Data&quot;, color = hare_color, markersize = 4, alpha = 0.7)
+scatter!(plt_test, tsteps_test, data_test[2, :], label = &quot;Lynx Data&quot;, color = lynx_color, markersize = 4, alpha = 0.7)
+plot!(plt_test, tsteps_test, preds[1, :], label = &quot;Hare Predicted&quot;, color = hare_color, linewidth = 2)
+plot!(plt_test, tsteps_test, preds[2, :], label = &quot;Lynx Predicted&quot;, color = lynx_color, linewidth = 2)</code></pre><p><img src="../figures/sgd_example_8_1.png" alt/></p><h2 id="Some-final-notes"><a class="docs-heading-anchor" href="#Some-final-notes">Some final notes</a><a id="Some-final-notes-1"></a><a class="docs-heading-anchor-permalink" href="#Some-final-notes" title="Permalink"></a></h2><ul><li>When training a neural network-based parametrization, it is usually best practice to use a validation loss to avoid overfitting. This can be implemented by creating a separate validation dataloader (see <a href="../../api/#HybridDynamicModels.create_train_val_loaders"><code>create_train_val_loaders</code></a>) and modifying the training loop to compute validation loss at intervals, overloading the <code>train</code> function. Check out the <a href="../customtraining_example/#Overloading-the-train-function">Overloading the <code>train</code> function</a> tutorial for an example.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../data_loading/">« Data Loading with <code>SegmentedTimeSeries</code></a><a class="docs-footer-nextpage" href="../mcsampling_example/">Bayesian inference with <code>MCSamplingBackend</code> »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 22 September 2025 14:44">Monday 22 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bayesian inference with MCSamplingBackend · HybridDynamicModels.jl</title><meta name="title" content="Bayesian inference with MCSamplingBackend · HybridDynamicModels.jl"/><meta property="og:title" content="Bayesian inference with MCSamplingBackend · HybridDynamicModels.jl"/><meta property="twitter:title" content="Bayesian inference with MCSamplingBackend · HybridDynamicModels.jl"/><meta name="description" content="Documentation for HybridDynamicModels.jl."/><meta property="og:description" content="Documentation for HybridDynamicModels.jl."/><meta property="twitter:description" content="Documentation for HybridDynamicModels.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="HybridDynamicModels.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HybridDynamicModels.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../data_loading/">Data Loading with <code>SegmentedTimeSeries</code></a></li><li><a class="tocitem" href="../sgd_example/">Training with <code>SGDBackend</code></a></li><li class="is-active"><a class="tocitem" href>Bayesian inference with <code>MCSamplingBackend</code></a><ul class="internal"><li><a class="tocitem" href="#Importing-necessary-packages"><span>Importing necessary packages</span></a></li><li><a class="tocitem" href="#Data-loading"><span>Data loading</span></a></li><li><a class="tocitem" href="#Data-preparation"><span>Data preparation</span></a></li><li><a class="tocitem" href="#Model-definition"><span>Model definition</span></a></li><li><a class="tocitem" href="#Training-configuration"><span>Training configuration</span></a></li><li><a class="tocitem" href="#Training"><span>Training</span></a></li><li><a class="tocitem" href="#Results-analysis"><span>Results analysis</span></a></li><li><a class="tocitem" href="#Forecasting-with-uncertainty"><span>Forecasting with uncertainty</span></a></li></ul></li><li><a class="tocitem" href="../customtraining_example/">Overloading the <code>train</code> function</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Bayesian inference with <code>MCSamplingBackend</code></a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Bayesian inference with <code>MCSamplingBackend</code></a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/vboussange/HybridDynamicModels.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/vboussange/HybridDynamicModels.jl/blob/main/docs/src/examples/mcsampling_example.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Bayesian-inference-with-[MCSamplingBackend](@ref)"><a class="docs-heading-anchor" href="#Bayesian-inference-with-[MCSamplingBackend](@ref)">Bayesian inference with <a href="../../api/#HybridDynamicModels.MCSamplingBackend"><code>MCSamplingBackend</code></a></a><a id="Bayesian-inference-with-[MCSamplingBackend](@ref)-1"></a><a class="docs-heading-anchor-permalink" href="#Bayesian-inference-with-[MCSamplingBackend](@ref)" title="Permalink"></a></h1><p>This tutorial demonstrates Bayesian inference for a hybrid autoregressive model of the classic hare-lynx predator-prey system, where the predation interaction is learned via neural networks while maintaining mechanistic constraints for birth and death processes. Uncertainty quantification is performed using Markov Chain Monte Carlo sampling.</p><div class="admonition is-info" id="Note-4d3580f9ec7544da"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-4d3580f9ec7544da" title="Permalink"></a></header><div class="admonition-body"><p>The <code>train</code> function provided by <code>HybridDynamicModels</code> is an experimental feature, exposed for demonstration purposes. Users are encouraged to implement their own <code>train</code> function to gain more control over the training process; see <a href="../customtraining_example/#Overloading-the-train-function">Overloading the <code>train</code> function</a>. A relevant utility function to build custom training pipelines in a Bayesian inference context is <a href="../../api/#HybridDynamicModels.create_turing_model"><code>create_turing_model</code></a>.</p></div></div><h2 id="Importing-necessary-packages"><a class="docs-heading-anchor" href="#Importing-necessary-packages">Importing necessary packages</a><a id="Importing-necessary-packages-1"></a><a class="docs-heading-anchor-permalink" href="#Importing-necessary-packages" title="Permalink"></a></h2><p>In order to use the MCSamplingBackend, we&#39;ll need to manually load <code>Lux</code>, <code>Turing</code>, and <code>ComponentArrays</code>. We additionally load <code>Distributions</code>, <code>Plots</code>, <code>StatsPlots</code>, <code>DataFrames</code>, <code>DelimitedFiles</code>, and <code>HTTP</code> for defining priors, data handling and visualization.</p><pre><code class="language-julia hljs">using Lux, Distributions, Turing, ComponentArrays
+using HybridDynamicModels
+using Random
+using Plots, StatsPlots
+using DataFrames, DelimitedFiles, HTTP
+
+const luxtype = Lux.f64</code></pre><pre><code class="nohighlight hljs">f64 (generic function with 1 method)</code></pre><h2 id="Data-loading"><a class="docs-heading-anchor" href="#Data-loading">Data loading</a><a id="Data-loading-1"></a><a class="docs-heading-anchor-permalink" href="#Data-loading" title="Permalink"></a></h2><p>Load the Lynx-Hare population dataset:</p><pre><code class="language-julia hljs">url = &quot;http://people.whitman.edu/~hundledr/courses/M250F03/LynxHare.txt&quot;
+data = readdlm(IOBuffer(HTTP.get(url).body), &#39; &#39;) |&gt; luxtype
+df_data = DataFrame(Year = data[:, 1], Hare = data[:, 2], Lynx = data[:, 3])
+
+# Visualize observed data (hare and lynx)
+plt_data = plot(df_data.Year, df_data.Hare, label = &quot;Hare&quot;, xlabel = &quot;Year&quot;,
+    ylabel = &quot;Population&quot;, title = &quot;&quot;)
+plot!(plt_data, df_data.Year, df_data.Lynx, label = &quot;Lynx&quot;)
+display(plt_data)</code></pre><p><img src="../figures/mcsampling_example_2_1.png" alt/></p><h2 id="Data-preparation"><a class="docs-heading-anchor" href="#Data-preparation">Data preparation</a><a id="Data-preparation-1"></a><a class="docs-heading-anchor-permalink" href="#Data-preparation" title="Permalink"></a></h2><p>Prepare training and test datasets:</p><pre><code class="language-julia hljs">tsteps = Vector(df_data.Year)
+
+# Extract hare and lynx data
+hare_lynx_data = Array(df_data[:, Not(:Year)])&#39; |&gt; luxtype
+hare_lynx_data ./= maximum(hare_lynx_data)
+
+# Data array: [hare, lynx]
+data_array = hare_lynx_data |&gt; luxtype
+
+forecast_length = 10
+test_idx = size(data_array, 2) - forecast_length + 1:size(data_array, 2)
+
+data_array_train = data_array[:, Not(test_idx)]
+tsteps_train = tsteps[Not(test_idx)]
+
+# Create training dataloader
+dataloader_train = SegmentedTimeSeries(
+    (data_array_train, tsteps_train);
+    segment_length = 4, shift = 3, partial_segment = true)</code></pre><pre><code class="nohighlight hljs">SegmentedTimeSeries
+  Time series length: 81
+  Segment length: 4
+  Shift: 3 (25.0% overlap)
+  Batch size: 1
+  Total segments: 27
+  Total batches: 27</code></pre><h2 id="Model-definition"><a class="docs-heading-anchor" href="#Model-definition">Model definition</a><a id="Model-definition-1"></a><a class="docs-heading-anchor-permalink" href="#Model-definition" title="Permalink"></a></h2><p>Define a hare-lynx predator-prey model where the predation interaction is learned via neural networks, while birth and death processes follow mechanistic rules:</p><pre><code class="language-julia hljs"># Neural network for hare-lynx predation interactions
+hlsize = 2^2
+neural_interactions = Chain(Dense(2, hlsize, relu),
+                        Dense(hlsize, 1, relu))  # Output: predation rate, enforce non-negativity
+
+# Bayesian ecological parameters with Uniform priors using same bounds as SGD constraints
+mechanistic_priors = (
+    hare_birth = Uniform(0.1, 3.0),
+    hare_death = Uniform(0.1, 3.0),
+    lynx_death = Uniform(1e-3, 2.0)
+)
+
+# Priors for neural network weights
+neural_priors =  Normal(0.0, 1.0)  # Prior for neural network weights
+
+# Hybrid ecosystem dynamics
+function ecosystem_step(layers, u, ps, t)
+    hare, lynx = max.(u, 0.)  # Unpack state variables
+    
+    params = layers.mechanistic_params(ps.mechanistic_params)
+    
+    # Neural network: predation rate
+    predation_input = [hare, lynx]
+    predation_rate = layers.neural_interactions(predation_input, ps.neural_interactions)[1]
+    
+    # Mechanistic hare dynamics
+    hare_birth = params.hare_birth[1] * hare
+    hare_predation = -predation_rate * hare * lynx
+    hare_natural_death = -params.hare_death[1] * hare
+    
+    # Mechanistic lynx dynamics
+    lynx_predation_gain = predation_rate * hare * lynx  # Lynx gain from predation
+    lynx_death = -params.lynx_death[1] * lynx
+    
+    # Return derivatives
+    return [
+        hare_birth + hare_predation + hare_natural_death,  # Hare
+        lynx_predation_gain + lynx_death                   # Lynx
+    ]
+end
+
+# Create Bayesian autoregressive model
+model = ARModel(
+    (neural_interactions = BayesianLayer(neural_interactions, neural_priors),
+     mechanistic_params = BayesianLayer(ParameterLayer(), mechanistic_priors)),
+    ecosystem_step;
+    dt = tsteps[2] - tsteps[1],
+)</code></pre><pre><code class="nohighlight hljs">ARModel(
+    neural_interactions = BayesianLayer(
+        layers = Chain(
+            layer_1 = Dense(2 =&gt; 4, relu),  # 12 parameters
+            layer_2 = Dense(4 =&gt; 1, relu),  # 5 parameters
+        ),
+    ),
+    mechanistic_params = BayesianLayer(
+        layers = ParameterLayer{NoConstraint, HybridDynamicModels.var&quot;#42#4
+4&quot;{@NamedTuple{}}, HybridDynamicModels.var&quot;#43#45&quot;{@NamedTuple{constraint::
+@NamedTuple{}}}}(NoConstraint(), HybridDynamicModels.var&quot;#42#44&quot;{@NamedTupl
+e{}}(NamedTuple()), HybridDynamicModels.var&quot;#43#45&quot;{@NamedTuple{constraint:
+:@NamedTuple{}}}((constraint = NamedTuple(),))),
+    ),
+)         # Total: 17 parameters,
+          #        plus 0 states.</code></pre><h2 id="Training-configuration"><a class="docs-heading-anchor" href="#Training-configuration">Training configuration</a><a id="Training-configuration-1"></a><a class="docs-heading-anchor-permalink" href="#Training-configuration" title="Permalink"></a></h2><p>Configure Bayesian inference with MCMC sampling. We assume a Normal likelihood for the observed data with a fixed standard deviation.</p><pre><code class="language-julia hljs"># MCMC sampler
+sampler = NUTS(0.65)  # No-U-Turn Sampler
+
+# Likelihood distribution
+data_distrib = x -&gt; Normal(x, 0.2)
+
+rng = MersenneTwister(42)  # For reproducibility
+
+# Training backend configuration
+backend = MCSamplingBackend(
+    sampler,      # MCMC sampler
+    1000,          # Number of MCMC samples
+    data_distrib;  # Likelihood distribution
+    rng
+)</code></pre><pre><code class="nohighlight hljs">HybridDynamicModelsTuringExt.MCSamplingBackend(NUTS{AutoForwardDiff{nothing
+, Nothing}, AdvancedHMC.DiagEuclideanMetric}(-1, 0.65, 10, 1000.0, 0.0, Aut
+oForwardDiff()), 1000, Main.var&quot;##WeaveSandBox#513&quot;.var&quot;#1#2&quot;(), Base.Pairs
+{Symbol, MersenneTwister, Tuple{Symbol}, @NamedTuple{rng::MersenneTwister}}
+(:rng =&gt; MersenneTwister(42)))</code></pre><h2 id="Training"><a class="docs-heading-anchor" href="#Training">Training</a><a id="Training-1"></a><a class="docs-heading-anchor-permalink" href="#Training" title="Permalink"></a></h2><p>Train the model with Bayesian inference without inferring initial conditions (to reduce computation time for this example):</p><pre><code class="language-julia hljs">@info &quot;Starting Bayesian training...&quot;
+result = train(backend, model, dataloader_train, InferICs(false));</code></pre><pre><code class="nohighlight hljs">Starting Bayesian training...
+Found initial step size
+  ϵ = 0.2</code></pre><h2 id="Results-analysis"><a class="docs-heading-anchor" href="#Results-analysis">Results analysis</a><a id="Results-analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Results-analysis" title="Permalink"></a></h2><p>Analyze MCMC chains and posterior distributions:</p><pre><code class="language-julia hljs"># Extract MCMC chains
+chains = result.chains
+
+@info &quot;MCMC Summary:&quot;
+display(chains)</code></pre><pre><code class="nohighlight hljs">MCMC Summary:
+Chains MCMC chain (1000×34×1 Array{Float64, 3}):
+
+Iterations        = 501:1:1500
+Number of chains  = 1
+Samples per chain = 1000
+Wall duration     = 188.8 seconds
+Compute duration  = 188.8 seconds
+parameters        = model_neural_interactions_layer_1_weight[1, 1], model_n
+eural_interactions_layer_1_weight[2, 1], model_neural_interactions_layer_1_
+weight[3, 1], model_neural_interactions_layer_1_weight[4, 1], model_neural_
+interactions_layer_1_weight[1, 2], model_neural_interactions_layer_1_weight
+[2, 2], model_neural_interactions_layer_1_weight[3, 2], model_neural_intera
+ctions_layer_1_weight[4, 2], model_neural_interactions_layer_1_bias[1], mod
+el_neural_interactions_layer_1_bias[2], model_neural_interactions_layer_1_b
+ias[3], model_neural_interactions_layer_1_bias[4], model_neural_interaction
+s_layer_2_weight[1, 1], model_neural_interactions_layer_2_weight[1, 2], mod
+el_neural_interactions_layer_2_weight[1, 3], model_neural_interactions_laye
+r_2_weight[1, 4], model_neural_interactions_layer_2_bias[1], model_mechanis
+tic_params_hare_birth, model_mechanistic_params_hare_death, model_mechanist
+ic_params_lynx_death
+internals         = n_steps, is_accept, acceptance_rate, log_density, hamil
+tonian_energy, hamiltonian_energy_error, max_hamiltonian_energy_error, tree
+_depth, numerical_error, step_size, nom_step_size, lp, logprior, loglikelih
+ood
+
+Use `describe(chains)` for summary statistics and quantiles.</code></pre><p>We plot the posterior distributions of key parameters:</p><pre><code class="language-julia hljs"># Plot parameter traces
+trace_plot = plot(chains[[&quot;model_neural_interactions_layer_1_weight[1, 1]&quot;, 
+                            &quot;model_mechanistic_params_hare_birth&quot;, 
+                            &quot;model_mechanistic_params_hare_death&quot;, 
+                            &quot;model_mechanistic_params_lynx_death&quot;]], title=&quot;Parameter Traces&quot;)
+plot!(trace_plot[1, 1], title = &quot;Neural Network Weight[1,1]&quot;)
+plot!(trace_plot[2, 1], title = &quot;Hare Birth Rate&quot;)
+plot!(trace_plot[3, 1], title = &quot;Hare Death Rate&quot;)
+plot!(trace_plot[4, 1], title = &quot;Lynx Death Rate&quot;)
+[plot!(trace_plot[i, 2], title = &quot;&quot;) for i in 1:4]
+display(trace_plot)</code></pre><p><img src="../figures/mcsampling_example_8_1.png" alt/></p><h2 id="Forecasting-with-uncertainty"><a class="docs-heading-anchor" href="#Forecasting-with-uncertainty">Forecasting with uncertainty</a><a id="Forecasting-with-uncertainty-1"></a><a class="docs-heading-anchor-permalink" href="#Forecasting-with-uncertainty" title="Permalink"></a></h2><p>Forecast on test data with uncertainty quantification. For this, we use </p><pre><code class="language-julia hljs"># Function for forecasting with uncertainty
+function forecast_with_uncertainty(model, chains, tsteps_test, u0, t0, n_samples)
+    forecasts = []
+    posterior_samples = sample(model, chains, n_samples)
+
+    for i in 1:n_samples
+
+        pred, _ = model((; u0 = u0, tspan = (t0, tsteps_test[end]), saveat = tsteps_test), 
+                       posterior_samples[i], result.st_model.st.model)
+        push!(forecasts, pred)
+    end
+    
+    return forecasts
+end
+
+tsteps_test = tsteps[test_idx]
+data_test = data_array[:, test_idx]
+t0 = result.ics[end].t0
+tsteps_last_segment = tsteps_train[tsteps_train .&gt;= t0]
+data_last_segment = data_array_train[:, tsteps_train .&gt;= t0]
+u0 = data_array[:, findfirst(==(t0), tsteps)]  # Initial condition at t0
+
+tsteps_pred = union(tsteps_last_segment, tsteps_test)
+
+forecast_predictions = forecast_with_uncertainty(model, chains, tsteps_pred, u0, t0, 100)
+
+# Plot forecast with uncertainty
+forecast_plot = plot(title=&quot;Bayesian forecast&quot;, xlabel=&quot;Year&quot;, ylabel=&quot;Population&quot;, legend=:topright)
+
+# Training data (last part)
+hare_color = &quot;#ffd166&quot;
+lynx_color = &quot;#ef476f&quot;
+
+# Test data
+scatter!(forecast_plot, tsteps_last_segment, data_last_segment[1, :], 
+         label=&quot;Hare Train&quot;, color=hare_color, markershape=:circle, markersize=4, alpha=0.7)
+scatter!(forecast_plot, tsteps_last_segment, data_last_segment[2, :], 
+         label=&quot;Lynx Train&quot;, color=lynx_color, markershape=:circle, markersize=4, alpha=0.7)
+scatter!(forecast_plot, tsteps_test, data_test[1, :], 
+         label=&quot;Hare Test&quot;, color=hare_color, markershape=:diamond, markersize=6, alpha=0.7)
+scatter!(forecast_plot, tsteps_test, data_test[2, :], 
+         label=&quot;Lynx Test&quot;, color=lynx_color, markershape=:diamond, markersize=6, alpha=0.7)
+
+# Forecast uncertainty
+for i in 1:length(forecast_predictions)
+    plot!(forecast_plot, tsteps_pred, forecast_predictions[i][1, :], 
+          color=hare_color, alpha=0.1, label=i==1 ? &quot;Hare predicted&quot; : &quot;&quot;)
+    plot!(forecast_plot, tsteps_pred, forecast_predictions[i][2, :], 
+          color=lynx_color, alpha=0.1, label=i==1 ? &quot;Lynx predicted&quot; : &quot;&quot;)
+end
+display(forecast_plot)</code></pre><p><img src="../figures/mcsampling_example_9_1.png" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../sgd_example/">« Training with <code>SGDBackend</code></a><a class="docs-footer-nextpage" href="../customtraining_example/">Overloading the <code>train</code> function »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 22 September 2025 14:44">Monday 22 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
