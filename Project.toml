@@ -4,6 +4,7 @@ authors = ["Victor Boussange <vic.boussange@gmail.com> and contributors"]
 version = "0.0.4"
 
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
@@ -23,14 +24,15 @@ HybridDynamicModelsLuxExt = ["Lux", "Optimisers", "ComponentArrays"]
 HybridDynamicModelsTuringExt = ["Turing", "Lux", "ComponentArrays"]
 
 [compat]
+ADTypes = "1.18.0"
 DiffEqBase = "6.185.0"
 Functors = "0.5"
-julia = "1.11"
-LuxCore = "1.4"
 Lux = "= 1.17"
+LuxCore = "1.4"
 Optimisers = "0.4"
 Random = "1.11"
 Turing = "0.40"
+julia = "1.11"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

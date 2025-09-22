@@ -1,8 +1,6 @@
-# Data Loading with `SegmentedTimeSeries`
+# Data Loading with SegmentedTimeSeries
 
-This example demonstrates how to use the `SegmentedTimeSeries` data loader
-for batching and segmentation of tsteps series data. This is essential
-for training hybrid dynamical models on tsteps series data.
+This tutorial demonstrates the `SegmentedTimeSeries` data loader for batching and segmentation of time series data.
 
 ```julia; echo = false; results = "hidden"
 using HybridDynamicModels
@@ -10,24 +8,20 @@ using Plots
 using Random
 using Statistics
 
-## Segment length and shift
 function plot_segmentation(dataloader)
     plt = plot()
 
     tokenized = tokenize(dataloader)
 
     for token in tokens(tokenized)
-        # @show token
-        if token > 6  # Limit to first 6 segments for clarity
+        if token > 6
             break
         end
         segment_data, segment_times = tokenized[token]
         plot!(plt, segment_times, fill(token, length(segment_times)),
               linewidth = 2,
               color = token % 2,
-              label = "",
-              # linestyle = :dash
-              )
+              label = "")
     end
     xlabel!(plt, "Time")
     ylabel!(plt, "Segment index")
@@ -36,17 +30,16 @@ function plot_segmentation(dataloader)
 end
 ```
 
-## Basic usage
+## Basic Usage
 
-
-Let's first create some synthetic time series data.
+Create synthetic time series data for demonstration:
 
 ```julia
 tsteps = 0.0:0.1:20.0
 data = randn(2, length(tsteps))
 ```
 
-Now we can create a `SegmentedTimeSeries` dataloader like so:
+Create a `SegmentedTimeSeries` dataloader:
 
 ```julia
 segment_length = 20
@@ -55,43 +48,37 @@ dataloader = SegmentedTimeSeries((data, tsteps);
                                 segment_length)
 ```
 
-- `SegmentedTimeSeries` takes an arbitrary sized tuple of arrays as input, as long as the last dimension (tsteps) is the same for all arrays.
-- You likely want to play around with the `segment_length` and `shift` parameters to find the best segmentation strategy for your data.
-- The `batchsize` parameter controls how many segments are returned in each iteration.
+Key parameters:
+- `segment_length`: Number of time points per segment
+- `shift`: Step size between segments (default: `segment_length`)
+- `batchsize`: Number of segments per batch
 
+The dataloader accepts tuples of arrays where the last dimension represents time:
 
 ```julia
 other_data = randn(size(data))
 shift = 10
 dataloader = SegmentedTimeSeries((data, other_data, tsteps);
-                    segment_length,
-                    shift,
-                    batchsize = 2)
-# Examine the first few segments
-println("\nFirst 3 segments:")
+                                segment_length,
+                                shift,
+                                batchsize = 2)
+
 for (i, (segment_data, segment_other_data, segment_times)) in enumerate(dataloader)
-    if i > 3
-        break
-    end
-    println("Segment $i:")
-    println("  Time range: $(segment_times[1]) to $(segment_times[end])")
-    println("  Data shape: $(size(segment_data))")
-    println("  Other data shape: $(size(segment_data))")
+    i > 3 && break
+    println("Segment $i: time range $(segment_times[1]) to $(segment_times[end])")
 end
 ```
 
 
-### Visualizing segmentation strategies
+## Segmentation Strategies
 
-Here we show different segmentation strategies, varying segment length and shift parameters.
+The following visualization shows how `segment_length` and `shift` parameters affect data segmentation:
 
 ```julia; echo = false
-# Define parameter combinations
 segment_lengths = [10, 30]
 shifts = [15, 5]
 
 plots = []
-titles = []
 
 for (i, seg_len) in enumerate(segment_lengths)
     for (j, shift_val) in enumerate(shifts)
@@ -99,13 +86,10 @@ for (i, seg_len) in enumerate(segment_lengths)
                                         segment_length = seg_len,
                                         shift = shift_val)
         p = plot_segmentation(dataloader)
-        plot!(p, title = "segment_length = $seg_len, shift = $shift_val", size = (250, 200), titlefont = 10)
-        if j > 1
-            plot!(p, ylabel = "")
-        end
-        if i < 2
-            plot!(p, xlabel = "")
-        end
+        plot!(p, title = "segment_length=$seg_len, shift=$shift_val",
+              size = (250, 200), titlefontsize = 10)
+        j > 1 && plot!(p, ylabel = "")
+        i < 2 && plot!(p, xlabel = "")
         push!(plots, p)
     end
 end
@@ -113,34 +97,35 @@ end
 plot(plots..., layout = (2, 2), size = (600, 400))
 ```
 
+Smaller `shift` values create more overlap between segments, while larger `segment_length` values capture longer temporal dependencies.
+
 ## Tokenization
 
-Use tokenization to access segments by index. This can be useful to e.g. associate each segment to a particular initial condition vector to be learnt.
+Tokenization enables indexed access to individual segments, useful for associating segments with specific initial conditions or metadata:
 
 ```julia
 tokenized_dataloader = tokenize(dataloader)
 
-# Access specific segments by token
+# Get available tokens
 tokens_list = collect(tokens(tokenized_dataloader))
-```
 
-Access a specific segment by simply indexing.
-```julia
+# Access specific segment
 token = tokens_list[1]
-segment_data, segment_times = tokenized_dataloader[token];
+segment_data, segment_times = tokenized_dataloader[token]
 ```
 
-## Shuffling and randomization
-Segments are iterated determinstically by default:
+## Shuffling and Partial Segments
+
+By default, segments are processed in deterministic order:
 
 ```julia
 for (i, (tok, _)) in enumerate(tokenize(dataloader))
-    println("Batch $i contains tokens: ", tok)
     i > 5 && break
+    println("Batch $i contains tokens: ", tok)
 end
 ```
 
-But you can enable shuffling like so:
+Enable shuffling for randomized training:
 
 ```julia
 rng = Random.MersenneTwister(42)
@@ -151,9 +136,9 @@ dataloader_shuffled = SegmentedTimeSeries((data, tsteps);
                                          rng = rng)
 
 for (i, (tok, _)) in enumerate(tokenize(dataloader_shuffled))
-    println("Batch $i contains tokens: ", tok)
     i > 5 && break
+    println("Batch $i contains tokens: ", tok)
 end
 ```
 
-You further have the option to play around with `partial_segment` and `partial_batch` parameters to control how incomplete segments and batches are handled.
+Additional options include `partial_segment` and `partial_batch` parameters for handling incomplete segments and batches.

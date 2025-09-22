@@ -1,0 +1,234 @@
+# Training Hybrid Ecosystem Models with SGD
+
+This tutorial demonstrates gradient-based training of hybrid autoregressive models for ecological systems, using a vegetation-hare-lynx food web where vegetation-hare interactions are learned via neural networks while maintaining mechanistic constraints for other ecological processes.
+
+## Importing necessary packages
+In order to use the SGDBackend, we'll need to manually load `Lux`, `Optimisers`, and `ComponentArrays`. We additionally load `Zygote` for automatic differentiation, `ParameterSchedulers` for learning rate scheduling, and `Plots`, `DataFrames`, `DelimitedFiles`, and `HTTP` for data handling and visualization.
+
+```julia
+using Lux, Optimisers, ComponentArrays
+using Zygote
+using HybridDynamicModels
+using ParameterSchedulers
+using Random
+using Plots
+using DataFrames, DelimitedFiles, HTTP
+
+const luxtype = Lux.f64
+```
+
+## Data Loading
+
+Load the Lynx-Hare population dataset and simulate vegetation dynamics:
+
+```julia
+url = "http://people.whitman.edu/~hundledr/courses/M250F03/LynxHare.txt"
+data = readdlm(IOBuffer(HTTP.get(url).body), ' ') |> luxtype
+df_data = DataFrame(Year = data[:, 1], Hare = data[:, 2], Lynx = data[:, 3])
+
+# Visualize observed data (hare and lynx)
+plt_data = plot(df_data.Year, df_data.Hare, label = "Hare", xlabel = "Year",
+    ylabel = "Population", title = "Observed Hare-Lynx Data")
+plot!(plt_data, df_data.Year, df_data.Lynx, label = "Lynx")
+display(plt_data)
+```
+
+## Model Definition
+
+Define a vegetation-hare-lynx ecosystem model where vegetation-hare interactions are learned via neural networks, while other processes follow mechanistic rules:
+
+```julia
+# Neural network for vegetation-hare interactions
+hlsize = 2^4
+vegetation_hare_layer = Chain(Dense(2, hlsize, relu),
+                             Dense(hlsize, hlsize, relu),
+                             Dense(hlsize, 1))  # Output: hare consumption rate
+
+# Learnable ecological parameters
+eco_params = ParameterLayer(init_value = (
+    veg_growth = [0.3],      # Vegetation logistic growth rate
+    veg_carrying = [1.0],    # Vegetation carrying capacity
+    hare_birth = [0.8],      # Hare birth rate
+    hare_death = [0.1],      # Hare natural death rate
+    lynx_birth = [0.4],      # Lynx birth rate (from predation)
+    lynx_death = [0.2]       # Lynx death rate
+))
+
+# Hybrid ecosystem dynamics
+function ecosystem_step(layers, u, ps, t)
+    veg, hare, lynx = u[1], u[2], u[3]  # Unpack state variables
+    
+    params = layers.eco_params(ps.eco_params)
+    
+    # Mechanistic vegetation growth (logistic)
+    veg_growth = params.veg_growth[1] * veg * (1 - veg / params.veg_carrying[1])
+    
+    # Neural network: hare consumption of vegetation
+    consumption_input = [veg, hare]
+    consumption_rate = layers.vegetation_hare(consumption_input, ps.vegetation_hare)[1]
+    veg_consumption = -consumption_rate * veg * hare  # Vegetation loss
+    hare_consumption = consumption_rate * veg * hare  # Hare gain from consumption
+    
+    # Mechanistic hare dynamics
+    hare_birth = params.hare_birth[1] * hare
+    hare_predation = -params.lynx_birth[1] * hare * lynx  # Lynx predation on hare
+    hare_natural_death = -params.hare_death[1] * hare
+    
+    # Mechanistic lynx dynamics
+    lynx_predation_gain = params.lynx_birth[1] * hare * lynx  # Lynx gain from predation
+    lynx_death = -params.lynx_death[1] * lynx
+    
+    # Return derivatives
+    return [
+        veg_growth + veg_consumption,                    # Vegetation
+        hare_birth + hare_consumption + hare_predation + hare_natural_death,  # Hare
+        lynx_predation_gain + lynx_death                 # Lynx
+    ]
+end
+
+# Create autoregressive model
+tsteps = Vector(df_data.Year) |> luxtype
+model = ARModel(
+    (vegetation_hare = vegetation_hare_layer, eco_params = eco_params),
+    ecosystem_step;
+    dt = tsteps[2] - tsteps[1],
+)
+```
+
+## Data Preparation
+
+Prepare training and test datasets with simulated vegetation data:
+
+```julia
+# Extract hare and lynx data
+hare_lynx_data = Array(df_data[:, Not(:Year)])' |> luxtype
+hare_lynx_data ./= maximum(hare_lynx_data)
+
+# Simulate vegetation data based on hare population (inverse relationship)
+# Vegetation should be higher when hare population is lower (less consumption)
+veg_data = 1.0 .- hare_lynx_data[1, :] .* 0.7  # Vegetation negatively correlated with hare
+veg_data = max.(veg_data, 0.1)  # Minimum vegetation level
+
+# Combine into 3-variable system: [vegetation, hare, lynx]
+data_array = vcat(veg_data', hare_lynx_data) |> luxtype
+
+# Split into training and test sets
+forecast_length = 20
+test_idx = size(data_array, 2) - forecast_length + 1:size(data_array, 2)
+
+# Create training dataloader
+dataloader = SegmentedTimeSeries(
+    (data_array[:, Not(test_idx)], tsteps[Not(test_idx)]);
+    segment_length = 4, shift = 2, batchsize = 20)
+```
+
+## Training configuration
+
+Configure training with learning rate scheduling and callbacks:
+
+```julia
+# Learning rate schedule: exponential decay
+lr_schedule = Step(1e-2, 0.9, 200)
+
+# Callback for monitoring and learning rate adjustment
+function callback(loss, epoch, ts)
+    if epoch % 20 == 0
+        current_lr = lr_schedule(epoch)
+        @info "Epoch $epoch: Loss = $loss, LR = $current_lr"
+        Optimisers.adjust!(ts.optimizer_state, current_lr)
+    end
+end
+
+# Training backend configuration
+backend = SGDBackend(
+    AdamW(eta = 1e-2, lambda = 1e-4),  # Optimizer with weight decay
+    2000,                             # Number of epochs
+    AutoZygote(),                     # Automatic differentiation
+    MSELoss(),                        # Loss function
+    callback                          # Training callback
+)
+```
+
+## Training
+
+Train the model with initial condition inference:
+
+```julia
+@info "Starting training..."
+result = train(backend, model, dataloader, InferICs(true))
+```
+
+## Results Visualization
+
+Visualize training fit and test predictions for the three-species ecosystem:
+
+```julia
+
+# Colors: green for vegetation, blue for hare, red for lynx
+veg_color = "#06d6a0"
+hare_color = "#ffd166"
+lynx_color = "#ef476f"
+
+# Function to plot training results
+function plot_training_results(dataloader, result, model)
+    plt = plot(title = "Training Results", xlabel = "Year",
+        ylabel = "Population/Biomass", legend = :topright)
+
+    dataloader_tokenized = tokenize(dataloader)
+
+    for tok in tokens(dataloader_tokenized)
+        segment_data, segment_tsteps = dataloader_tokenized[tok]
+        ics = result.ics[tok].u0
+
+        pred, _ = model(
+            (; u0 = ics, saveat = segment_tsteps,
+                tspan = (segment_tsteps[1], segment_tsteps[end])),
+            result.ps, result.st)
+
+        # Plot observed data
+        scatter!(plt, segment_tsteps, segment_data[1, :],
+            label = (tok == 1 ? "Vegetation Data" : ""),
+            color = veg_color, markersize = 4, alpha = 0.7)
+        scatter!(plt, segment_tsteps, segment_data[2, :],
+            label = (tok == 1 ? "Hare Data" : ""),
+            color = hare_color, markersize = 4, alpha = 0.7)
+        scatter!(plt, segment_tsteps, segment_data[3, :],
+            label = (tok == 1 ? "Lynx Data" : ""),
+            color = lynx_color, markersize = 4, alpha = 0.7)
+
+        # Plot predictions
+        plot!(plt, segment_tsteps, pred[1, :],
+            label = (tok == 1 ? "Vegetation Predicted" : ""),
+            color = veg_color, linewidth = 2)
+        plot!(plt, segment_tsteps, pred[2, :],
+            label = (tok == 1 ? "Hare Predicted" : ""),
+            color = hare_color, linewidth = 2)
+        plot!(plt, segment_tsteps, pred[3, :],
+            label = (tok == 1 ? "Lynx Predicted" : ""),
+            color = lynx_color, linewidth = 2)
+    end
+    return plt
+end
+
+# Plot training results
+plt_train = plot_training_results(dataloader, result, model)
+```
+
+Forecast on test data:
+```julia
+tsteps_test = tsteps[test_idx]
+data_test = data_array[:, test_idx]
+u0, t0 = result.ics[end]
+
+preds, _ = model((; u0 = u0, tspan = (t0, tsteps_test[end]), saveat = tsteps_test),
+                result.ps, result.st)
+
+# Plot test predictions
+plt_test = plot(title = "Test Predictions", xlabel = "Year", ylabel = "Population/Biomass", legend = :topright)
+scatter!(plt_test, tsteps_test, data_test[1, :], label = "Vegetation Data", color = veg_color, markersize = 4, alpha = 0.7)
+scatter!(plt_test, tsteps_test, data_test[2, :], label = "Hare Data", color = hare_color, markersize = 4, alpha = 0.7)
+scatter!(plt_test, tsteps_test, data_test[3, :], label = "Lynx Data", color = lynx_color, markersize = 4, alpha = 0.7)
+plot!(plt_test, tsteps_test, preds[1, :], label = "Vegetation Predicted", color = veg_color, linewidth = 2)
+plot!(plt_test, tsteps_test, preds[2, :], label = "Hare Predicted", color = hare_color, linewidth = 2)
+plot!(plt_test, tsteps_test, preds[3, :], label = "Lynx Predicted", color = lynx_color, linewidth = 2)
+```

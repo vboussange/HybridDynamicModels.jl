@@ -2,7 +2,7 @@ abstract type AbstractOptimBackend end
 
 
 """
-    SGDBackend(opt, n_epochs, adtype, loss_fn; verbose_frequency=10, callback=(l,m,p,s)->nothing)
+    SGDBackend(opt, n_epochs, adtype, loss_fn, callback)
 
 Training backend using Lux.jl for mode estimation.
 
