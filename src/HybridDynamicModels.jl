@@ -5,7 +5,6 @@ import LuxCore.StatefulLuxLayerImpl: get_state, set_state!
 using Random
 using ConcreteStructs: @concrete
 using DiffEqBase
-using DispatchDoctor: @stable
 using Functors: @functor
 
 include("data.jl")

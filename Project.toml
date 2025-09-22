@@ -1,14 +1,12 @@
 name = "HybridDynamicModels"
 uuid = "7e133797-8c8e-49d9-acf3-b153daa40e06"
 authors = ["Victor Boussange <vic.boussange@gmail.com> and contributors"]
-version = "0.0.3"
+version = "0.0.4"
 
 [deps]
-ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
-DispatchDoctor = "8d63f2c5-f18a-4cf2-ba9d-b3f60fc568c8"
 Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 LuxCore = "bb33d45b-7691-41d6-9220-0943567d0623"
@@ -25,11 +23,14 @@ HybridDynamicModelsLuxExt = ["Lux", "Optimisers", "ComponentArrays"]
 HybridDynamicModelsTuringExt = ["Turing", "Lux", "ComponentArrays"]
 
 [compat]
-ADTypes = "1.17.0"
 DiffEqBase = "6.185.0"
-Functors = "0.5.2"
+Functors = "0.5"
+julia = "1.11"
+LuxCore = "1.4"
 Lux = "= 1.17"
-julia = "1.10.10"
+Optimisers = "0.4"
+Random = "1.11"
+Turing = "0.40"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
