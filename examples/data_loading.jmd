@@ -9,110 +9,108 @@ using HybridDynamicModels
 using Plots
 using Random
 using Statistics
-```
 
-## Data generation
+## Segment length and shift
+function plot_segmentation(dataloader)
+    plt = plot()
 
-Create synthetic tsteps series data for demonstration.
+    tokenized = tokenize(dataloader)
 
-```julia
-# Generate multiple tsteps series with different characteristics
-function generate_time_series()
-    t = 0.0:0.1:20.0
+    for token in tokens(tokenized)
+        # @show token
+        if token > 6  # Limit to first 6 segments for clarity
+            break
+        end
+        segment_data, segment_times = tokenized[token]
+        plot!(plt, segment_times, fill(token, length(segment_times)),
+              linewidth = 2,
+              color = token % 2,
+              label = "",
+              # linestyle = :dash
+              )
+    end
+    xlabel!(plt, "Time")
+    ylabel!(plt, "Segment index")
 
-    A2, ω2, γ2 = 2.0, 0.5, 0.05
-    u0_2 = 1.0
-    series = u0_2 .+ A2 .* exp.(-γ2 .* t) .* cos.(ω2 .* t)
-
-    return series, t
+    return plt
 end
-
-data, tsteps = generate_time_series()
-size(data)
 ```
 
 ## Basic usage
 
+
+Let's first create some synthetic time series data.
+
+```julia
+tsteps = 0.0:0.1:20.0
+data = randn(2, length(tsteps))
+```
+
+Now we can create a `SegmentedTimeSeries` dataloader like so:
+
 ```julia
 segment_length = 20
-shift = 10  # 50% overlap
 
 dataloader = SegmentedTimeSeries((data, tsteps);
-                                segment_length = segment_length,
-                                shift = shift,
-                                batchsize = 2)
+                                segment_length)
+```
 
+- `SegmentedTimeSeries` takes an arbitrary sized tuple of arrays as input, as long as the last dimension (tsteps) is the same for all arrays.
+- You likely want to play around with the `segment_length` and `shift` parameters to find the best segmentation strategy for your data.
+- The `batchsize` parameter controls how many segments are returned in each iteration.
+
+
+```julia
+other_data = randn(size(data))
+shift = 10
+dataloader = SegmentedTimeSeries((data, other_data, tsteps);
+                    segment_length,
+                    shift,
+                    batchsize = 2)
 # Examine the first few segments
 println("\nFirst 3 segments:")
-for (i, (segment_data, segment_times)) in enumerate(dataloader)
+for (i, (segment_data, segment_other_data, segment_times)) in enumerate(dataloader)
     if i > 3
         break
     end
     println("Segment $i:")
     println("  Time range: $(segment_times[1]) to $(segment_times[end])")
     println("  Data shape: $(size(segment_data))")
-    println("  Start value: $(segment_data[1, 1, 1])")
+    println("  Other data shape: $(size(segment_data))")
 end
 ```
-`SegmentedTimeSeries` takes an arbitrary sized tuple of arrays as input, as long as the last dimension (tsteps) is the same for all arrays.
 
-```julia
-other_data = randn(size(data))
-SegmentedTimeSeries((data, other_data, tsteps);
-                    segment_length = segment_length,
-                    shift = shift,
-                    batchsize = 2) # works
-```
 
-## Segment length and shift
+### Visualizing segmentation strategies
 
-```julia
-function plot_segmentation(data, times, dataloader)
-    plt = plot(times, data[1, :],
-               label = "Full tsteps series",
-               linewidth = 2,
-               xlabel = "Time",
-               ylabel = "Value")
+Here we show different segmentation strategies, varying segment length and shift parameters.
 
-    # Plot segments
-    tokenized = tokenize(dataloader)
+```julia; echo = false
+# Define parameter combinations
+segment_lengths = [10, 30]
+shifts = [15, 5]
 
-    for (i, token) in enumerate(tokens(tokenized))
-        if i > 6  # Limit to first 6 segments for clarity
-            break
+plots = []
+titles = []
+
+for (i, seg_len) in enumerate(segment_lengths)
+    for (j, shift_val) in enumerate(shifts)
+        dataloader = SegmentedTimeSeries((data, tsteps);
+                                        segment_length = seg_len,
+                                        shift = shift_val)
+        p = plot_segmentation(dataloader)
+        plot!(p, title = "segment_length = $seg_len, shift = $shift_val", size = (250, 200), titlefont = 10)
+        if j > 1
+            plot!(p, ylabel = "")
         end
-        segment_data, segment_times = tokenized[token]
-
-        plot!(plt, segment_times, segment_data[1, :, 1],
-              label = "Segment $token",
-              linewidth = 2,
-              color = i,
-              linestyle = :dash)
+        if i < 2
+            plot!(p, xlabel = "")
+        end
+        push!(plots, p)
     end
-
-    return plt
 end
 
-plt_basic = plot_segmentation(data, tsteps, dataloader)
-```
-
-#### No overlap
-```julia
-dataloader_no_overlap = SegmentedTimeSeries((data, tsteps);
-                                           segment_length = segment_length,
-                                           shift = segment_length)
-
-plot_segmentation(data, tsteps, dataloader_no_overlap)
-```
-
-#### High overlap
-```julia
-dataloader_high_overlap = SegmentedTimeSeries((data, tsteps);
-                                             segment_length = segment_length,
-                                             shift = 5,  # High overlap
-                                             batchsize = 1)
-
-plt_high_overlap = plot_segmentation(data, tsteps, dataloader_high_overlap)
+plot(plots..., layout = (2, 2), size = (600, 400))
 ```
 
 ## Tokenization
@@ -124,44 +122,38 @@ tokenized_dataloader = tokenize(dataloader)
 
 # Access specific segments by token
 tokens_list = collect(tokens(tokenized_dataloader))
-println("Available tokens: ", tokens_list[1:min(5, length(tokens_list))])
 ```
 
 Access a specific segment by simply indexing.
 ```julia
 token = tokens_list[1]
-segment_data, segment_times = tokenized_dataloader[token]
-println("\nSegment $token details:")
-println("  Time points: $(length(segment_times))")
-println("  Data values: $(segment_data[1, :, 1])")
+segment_data, segment_times = tokenized_dataloader[token];
 ```
 
 ## Shuffling and randomization
-
-Demonstrate shuffling for training.
+Segments are iterated determinstically by default:
 
 ```julia
+for (i, (tok, _)) in enumerate(tokenize(dataloader))
+    println("Batch $i contains tokens: ", tok)
+    i > 5 && break
+end
+```
 
+But you can enable shuffling like so:
+
+```julia
 rng = Random.MersenneTwister(42)
-
 dataloader_shuffled = SegmentedTimeSeries((data, tsteps);
-                                         segment_length = segment_length,
-                                         shift = shift,
-                                         batchsize = 1,
+                                         segment_length,
+                                         shift,
                                          shuffle = true,
                                          rng = rng)
 
-tokenized_shuffled = tokenize(dataloader_shuffled)
-
-println("Shuffled dataloader tokens: ", collect(tokens(tokenized_shuffled))[1:10])
-
-# Compare with unshuffled
-dataloader_unshuffled = SegmentedTimeSeries((data, tsteps);
-                                           segment_length = segment_length,
-                                           shift = shift,
-                                           batchsize = 1,
-                                           shuffle = false)
-
-tokenized_unshuffled = tokenize(dataloader_unshuffled)
-println("Unshuffled dataloader tokens: ", collect(tokens(tokenized_unshuffled))[1:10])
+for (i, (tok, _)) in enumerate(tokenize(dataloader_shuffled))
+    println("Batch $i contains tokens: ", tok)
+    i > 5 && break
+end
 ```
+
+You further have the option to play around with `partial_segment` and `partial_batch` parameters to control how incomplete segments and batches are handled.

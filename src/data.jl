@@ -337,7 +337,7 @@ function Base.show(io::IO, sdl::SegmentedTimeSeries)
     overlap_pct = overlap > 0 ? round(100 * overlap / sdl.segment_length, digits=1) : 0.0
     
     println(io)
-    println(io, "  Data: ", summary(sdl.data))
+    println(io, "  Time series length: ", _nobs(sdl.data))
     println(io, "  Segment length: $(sdl.segment_length)")
     println(io, "  Shift: $(sdl.shift) ($(overlap_pct)% overlap)")
     println(io, "  Batch size: $(sdl.batchsize)")
