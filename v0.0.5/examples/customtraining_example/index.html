@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Overloading the train function · HybridDynamicModels.jl</title><meta name="title" content="Overloading the train function · HybridDynamicModels.jl"/><meta property="og:title" content="Overloading the train function · HybridDynamicModels.jl"/><meta property="twitter:title" content="Overloading the train function · HybridDynamicModels.jl"/><meta name="description" content="Documentation for HybridDynamicModels.jl."/><meta property="og:description" content="Documentation for HybridDynamicModels.jl."/><meta property="twitter:description" content="Documentation for HybridDynamicModels.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="HybridDynamicModels.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HybridDynamicModels.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../data_loading/">Data Loading with <code>SegmentedTimeSeries</code></a></li><li><a class="tocitem" href="../sgd_example/">Training with <code>SGDBackend</code></a></li><li><a class="tocitem" href="../mcsampling_example/">Bayesian inference with <code>MCSamplingBackend</code></a></li><li class="is-active"><a class="tocitem" href>Overloading the <code>train</code> function</a><ul class="internal"><li><a class="tocitem" href="#Define-a-custom-setup-struct"><span>Define a custom setup struct</span></a></li><li><a class="tocitem" href="#Implement-the-custom-train-method"><span>Implement the custom train method</span></a></li><li><a class="tocitem" href="#Training-example"><span>Training example</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Overloading the <code>train</code> function</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Overloading the <code>train</code> function</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/vboussange/HybridDynamicModels.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/vboussange/HybridDynamicModels.jl/blob/main/docs/src/examples/customtraining_example.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Overloading-the-train-function"><a class="docs-heading-anchor" href="#Overloading-the-train-function">Overloading the <code>train</code> function</a><a id="Overloading-the-train-function-1"></a><a class="docs-heading-anchor-permalink" href="#Overloading-the-train-function" title="Permalink"></a></h1><p>The default <code>train</code> function is basic and meant for a demonstration purpose. For more advanced training, you should create your own training pipeline.</p><p>This tutorial shows how to build a custom training pipeline that includes validation to prevent overfitting.</p><h2 id="Define-a-custom-setup-struct"><a class="docs-heading-anchor" href="#Define-a-custom-setup-struct">Define a custom setup struct</a><a id="Define-a-custom-setup-struct-1"></a><a class="docs-heading-anchor-permalink" href="#Define-a-custom-setup-struct" title="Permalink"></a></h2><p>Create a new struct that inherits from <code>AbstractSetup</code>. This struct will hold the validation dataloader.</p><pre><code class="language-julia hljs">using HybridDynamicModels
+import HybridDynamicModels: AbstractSetup
+import LuxCore: AbstractLuxLayer
+import ConcreteStructs: @concrete
+import Random
+
+@concrete struct WithValidation &lt;: AbstractSetup
+    dataloader
+end</code></pre><h2 id="Implement-the-custom-train-method"><a class="docs-heading-anchor" href="#Implement-the-custom-train-method">Implement the custom train method</a><a id="Implement-the-custom-train-method-1"></a><a class="docs-heading-anchor-permalink" href="#Implement-the-custom-train-method" title="Permalink"></a></h2><p>Implement a <code>train</code> method that takes your custom setup. This method will train the model while monitoring validation loss.</p><p>The method performs these steps:</p><ol><li>Prepare the training and validation data</li><li>Set up the model with a feature wrapper</li><li>Initialize the training state</li><li>Train for multiple epochs, computing both training and validation loss</li><li>Save the best model parameters based on validation loss</li></ol><pre><code class="language-julia hljs">function feature_wrapper((batched_segments, batched_tsteps))
+    return [(; u0 = batched_segments[:, 1, i],
+                saveat = batched_tsteps[:, i],
+                tspan = (batched_tsteps[1, i], batched_tsteps[end, i])
+            )
+            for i in 1:size(batched_tsteps, 2)]
+end
+
+function HybridDynamicModels.train(backend::SGDBackend,
+        model::AbstractLuxLayer,
+        dataloader_train::SegmentedTimeSeries,
+        experimental_setup::WithValidation,
+        rng = Random.default_rng(),
+        luxtype = Lux.f64)
+    dataloader_train = luxtype(dataloader_train)
+    dataloader_valid = luxtype(experimental_setup.dataloader)
+
+    @assert length(dataloader_train)==length(dataloader_valid) &quot;The training and validation dataloaders must have the same number of segments&quot;
+
+    model_with_wrapper = Chain((; wrapper = Lux.WrappedFunction(feature_wrapper), model = model))
+
+    ps, st = luxtype(Lux.setup(rng, model_with_wrapper))
+
+    train_state = Training.TrainState(model_with_wrapper, ps, st, backend.opt)
+    best_ps = ps.model
+    best_st = st.model
+
+    best_loss = luxtype(Inf)
+    for epoch in 1:(backend.n_epochs)
+        train_loss = luxtype(0.0)
+        for (batched_segments, batched_tsteps) in dataloader_train
+            _, loss, _, train_state = Training.single_train_step!(
+                backend.adtype,
+                backend.loss_fn,
+                ((batched_segments, batched_tsteps), batched_segments),
+                train_state)
+            train_loss += loss
+        end
+
+        valid_loss = 0.0
+        ps, st = train_state.parameters, train_state.states
+
+        for (batched_segments, batched_data) in dataloader_valid
+            segment_pred, _ = model_with_wrapper((batched_segments, batched_data), ps, st)
+            valid_loss += backend.loss_fn(segment_pred, batched_segments)
+        end
+
+        println(&quot;Train loss: $train_loss&quot;)
+        println(&quot;Validation loss: $valid_loss&quot;)
+        if valid_loss &lt; best_loss
+            best_ps = ps.model
+            best_st = st.model
+            best_loss = train_loss
+        end
+    end
+
+    return (; ps = best_ps, st = best_st)
+end</code></pre><h2 id="Training-example"><a class="docs-heading-anchor" href="#Training-example">Training example</a><a id="Training-example-1"></a><a class="docs-heading-anchor-permalink" href="#Training-example" title="Permalink"></a></h2><p>To use this custom pipeline, create training and validation dataloaders, set up the custom configuration, and call the train function.</p><pre><code class="language-julia hljs">using Lux, Optimisers, ComponentArrays
+using Zygote
+
+tsteps = range(0, stop=20.0, length=201)
+data = randn(2, length(tsteps))
+
+segment_length = 20
+valid_length = 2
+batchsize = 4
+
+dataloader_train, dataloader_valid = create_train_val_loaders((data, tsteps);
+                                                                segment_length,
+                                                                valid_length,
+                                                                batchsize,
+                                                                partial_batch = true)
+
+setup = WithValidation(dataloader_valid)
+
+nn = Chain(
+    Dense(2, 16, relu),
+    Dense(16, 16, relu),
+    Dense(16, 2)
+)
+
+function ar_step(layers, u, ps, t)
+    return layers.nn(u, ps.nn)
+end
+
+model = ARModel(
+    (;nn),
+    ar_step;
+    dt = tsteps[2] - tsteps[1],
+)
+
+backend = SGDBackend(Adam(0.01),
+                    10,
+                    AutoZygote(),
+                    MSELoss())
+
+train(backend, model, dataloader_train, setup);</code></pre><pre><code class="nohighlight hljs">Train loss: 2.1396159087495272
+Validation loss: 1.3984145742678684
+Train loss: 1.9403666067122565
+Validation loss: 1.2131168212684706
+Train loss: 1.9005103287762137
+Validation loss: 1.5569825896910565
+Train loss: 2.14326571146772
+Validation loss: 1.9732086782553262
+Train loss: 2.6714405634040563
+Validation loss: 2.364592379502981
+Train loss: 3.2867040580251774
+Validation loss: 2.4045312947581263
+Train loss: 2.886779543792855
+Validation loss: 2.1478113010664277
+Train loss: 2.4321024418416
+Validation loss: 1.774598832026197
+Train loss: 2.200574387278439
+Validation loss: 1.6538620912706206
+Train loss: 2.155162512199531
+Validation loss: 1.6509041299781564</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../mcsampling_example/">« Bayesian inference with <code>MCSamplingBackend</code></a><a class="docs-footer-nextpage" href="../../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 22 September 2025 14:46">Monday 22 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
