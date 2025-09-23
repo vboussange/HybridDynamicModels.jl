@@ -28,8 +28,8 @@
 - **`SegmentedTimeSeries`**: Time series data loader with segmentation, implementing mini-batching.
 
 ### **Training API, with following backends** 
-- **`SGDBackend`**: Gradient descent optimization with [Optimisers.jl](https://github.com/FluxML/Optimisers.jl) and [Lux.jl training API](https://github.com/LuxDL/Lux.jl)
-- **`MCSamplingBackend`**: Full Bayesian inference with uncertainty quantification using [`DynamicPPL.jl`](https://github.com/TuringLang/DynamicPPL.jl) and [Turing.jl](https://github.com/TuringLang/Turing.jl) and 
+- **`SGDBackend`**: Gradient descent optimization with [`Optimisers.jl`](https://github.com/FluxML/Optimisers.jl) and [`Lux.jl` training API](https://github.com/LuxDL/Lux.jl)
+- **`MCSamplingBackend`**: Full Bayesian inference with uncertainty quantification using [`DynamicPPL.jl`](https://github.com/TuringLang/DynamicPPL.jl) and [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
 ## 📦 Installation
 
@@ -40,9 +40,10 @@ Pkg.add("HybridDynamicModels")
 
 ## 🔥 Quick Start
 
-### Autoregressive hybrid Model
+### Autoregressive hybrid model
 
 ```julia
+using Lux
 using HybridDynamicModels
 using Random
 
@@ -50,14 +51,18 @@ using Random
 interaction_layer = Dense(2, 2, tanh)
 
 # Parameter layer for growth/decay rates
-rate_params = ParameterLayer(init_value = (growth = [0.1], decay = [0.05]))
+rate_params = ParameterLayer(init_value = (growth = [0.1], decay = [0.05]),
+    constraint = NamedTupleConstraint((; growth = BoxConstraint([0.0], [1.0]),
+        decay = BoxConstraint([0.0], [1.0]))
+    )
+)
 
 # Simple hybrid dynamics: linear terms + neural interactions
 function ar_step(layers, u, ps, t)
     # Linear terms from parameters
     params = layers.rates(ps.rates)
-    growth = vcat(params.growth, - params.decay)
-    
+    growth = vcat(params.growth, -params.decay)
+
     # Neural network interactions
     interactions = layers.interaction(u, ps.interaction)
 
@@ -72,35 +77,61 @@ model = ARModel(
 
 # Setup and train
 ps, st = Lux.setup(Random.default_rng(), model)
-tsteps = range(0, stop=10.0, step=0.1)
+tsteps = range(0, stop = 10.0, step = 0.1)
 
-preds, _ = model((; u0 = [1.0, 1.0], 
-                tspan = (tsteps[1], tsteps[end]), 
-                saveat = tsteps), ps, st)
+preds, _ = model(
+    (; u0 = [1.0, 1.0],
+        tspan = (tsteps[1], tsteps[end]),
+        saveat = tsteps), ps, st)
 size(preds)  # (2, 101)
 ```
+We can predict batches of time series by providing a batch of initial conditions.
+```julia
+x = [(; u0 = rand(2),
+         tspan = (tsteps[1], tsteps[end]),
+         saveat = tsteps) for _ in 1:5]
+batch_preds, _ = model(x, ps, st)
+size(batch_preds)  # (2, 101, 5)
+```
 
-### Lux backend
+We can bind our `model` with an additional layer predicting initial conditions from some other input data using the `ICLayer`.
 
 ```julia
-using Optimisers
+ic_layer = ICLayer(Dense(10, 2, tanh))
+model_with_ic = Chain(ic_layer, model)
+ps, st = Lux.setup(Random.default_rng(), model_with_ic)
+x = [(; u0 = rand(10),
+         tspan = (tsteps[1], tsteps[end]),
+         saveat = tsteps) for _ in 1:5]
+batch_preds, _ = model_with_ic(x, ps, st)
+size(batch_preds)  # (2, 101, 5)
+```
+
+A similar workwflow can be used with `ODEModel` and `AnalyticModel`.
+
+### Training with `Optimisers.jl` through the `SGDBackend`
+
+```julia
+using Lux, Optimisers, ComponentArrays # conditional loading to use `SGDBackend`
+using Zygote
 data = rand(2, length(tsteps))
-dataloader = SegmentedTimeSeries((data, tsteps); segment_length=10, shift= 2)
+dataloader = SegmentedTimeSeries((data, tsteps); segment_length = 10, shift = 2)
 
 backend = SGDBackend(Adam(1e-2), 100, AutoZygote(), MSELoss())
 result = train(backend, model, dataloader, InferICs(false))
 
 # Make predictions
 tspan = (tsteps[1], tsteps[end])
-prediction, _ = model((; u0 = result.ics[1].u0, 
-                        tspan = tspan, 
-                        saveat = tsteps), result.ps, result.st)
+prediction, _ = model(
+    (; u0 = result.ics[1].u0,
+        tspan = tspan,
+        saveat = tsteps), result.ps, result.st)
 ```
 
-### Turing backend
+### Bayesian inference with `Turing.jl` through the `MCSamplingBackend`
 
 ```julia
-using Distributions, Turing
+using Distributions, Turing, ComponentArrays # conditional loading to use `MCSamplingBackend`
 
 # Add priors to rate parameters
 rate_priors = (
@@ -111,63 +142,31 @@ nn_priors = Normal(0, 1)  # Example prior for NN weights
 
 # Create Bayesian model
 bayesian_model = ARModel(
-    (interaction = BayesianLayer(interaction_layer, nn_priors), 
-    rates = BayesianLayer(rate_params, rate_priors)),
+    (interaction = BayesianLayer(interaction_layer, nn_priors),
+        rates = BayesianLayer(rate_params, rate_priors)),
     ar_step;
-    dt = 0.1,
+    dt = 0.1
 )
 
 # MCMC training
 datadistrib = Normal
 mcmc_backend = MCSamplingBackend(NUTS(0.65), 500, datadistrib)
-result = train(mcmc_backend, 
-                bayesian_model, 
-                dataloader, 
-                InferICs(false))
+result = train(mcmc_backend,
+    bayesian_model,
+    dataloader,
+    InferICs(false))
 
 # Sample from posterior
 chains = result.chains
 posterior_samples = sample(bayesian_model, chains, 50)
 ```
 
-### Learning Initial Conditions
-
-```julia
-# Learn initial conditions for each data segment
-constraint_u0 = NamedTupleConstraint((; u0 = BoxConstraint([0.1, 0.1], [2.0, 2.0])))  # Reasonable bounds
-infer_ics = InferICs(true, constraint_u0)
-
-# Create model for initial condition learning
-ic_model = ARModel(
-    (interaction = interaction_layer, rates = rate_params),
-    ar_step;
-    dt = 0.1,
-)
-
-# Train with learned initial conditions
-result = train(backend, ic_model, dataloader, infer_ics)
-
-# Access learned initial conditions
-for (i, ic) in enumerate(result.ics)
-    println("Segment $i initial condition: ", ic.u0)
-end
-```
-
 ## 📚 Documentation
-### Examples
-
-- **[`data_loading.jl`](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/examples/data_loading.jl)**: Demonstrates how to use the `SegmentedTimeSeries` data loader for batching and segmentation of time series data.
-
-- **[`sgd_example.jl`](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/examples/sgd_example.jl)**: Complete example showcasing gradient-based training with the SGD backend using real Lynx-Hare population data.
-
-- **[`mcsampling_example.jl`](https://github.com/vboussange/HybridDynamicModels.jl/blob/main/examples/mcsampling_example.jl)**: Bayesian parameter estimation example using MCMC sampling with the MCSamplingBackend.
-
-### API
-See [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/api/).
+API and tutorials can be found in [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/api/).
 
 ## 🙏 Acknowledgments
 
-Built on the excellent LuxDL, SciML and TuringLang ecosystem, particularly:
+Built on the excellent LuxDL, SciML and TuringLang ecosystems:
 - [Lux.jl](https://github.com/LuxDL/Lux.jl) for neural networks
 - [Turing.jl](https://github.com/TuringLang/Turing.jl) for Bayesian inference
 - [SciMLSensitivity.jl](https://github.com/SciML/SciMLSensitivity.jl) for automatic differentiation
