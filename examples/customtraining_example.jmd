@@ -1,6 +1,6 @@
 # Overloading the `train` function
 
-The default `train` function is basic and meant for a demonstration purpose. For more advanced training, you should create your own training pipeline.
+The default [`train`](@ref) function is opiniated and meant for demonstration purposes. For more advanced training, you should create your own training pipeline.
 
 This tutorial shows how to build a custom training pipeline that includes validation to prevent overfitting.
 
@@ -20,7 +20,7 @@ import Random
 end
 ```
 
-## Implement the custom train method
+## Implement the custom `train` method
 
 Implement a `train` method that takes your custom setup. This method will train the model while monitoring validation loss.
 

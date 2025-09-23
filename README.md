@@ -111,6 +111,8 @@ A similar workwflow can be used with `ODEModel` and `AnalyticModel`.
 
 ### Training with `Optimisers.jl` through the `SGDBackend`
 
+> ⚠️ The default [`train`] function is opiniated and meant for demonstration purposes. You are encouraged [to define your own training pipeline](https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/customtraining_example/).
+
 ```julia
 using Lux, Optimisers, ComponentArrays # conditional loading to use `SGDBackend`
 using Zygote
@@ -162,7 +164,7 @@ posterior_samples = sample(bayesian_model, chains, 50)
 ```
 
 ## 📚 Documentation
-API and tutorials can be found in [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/api/).
+Check out [the tutorials](https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/data_loading/) and the [API](https://vboussange.github.io/HybridDynamicModels.jl/stable/api/) in [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/).
 
 ## 🙏 Acknowledgments
 
