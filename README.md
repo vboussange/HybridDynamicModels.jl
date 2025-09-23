@@ -111,7 +111,7 @@ A similar workwflow can be used with `ODEModel` and `AnalyticModel`.
 
 ### Training with `Optimisers.jl` through the `SGDBackend`
 
-> ⚠️ The default [`train`] function is opiniated and meant for demonstration purposes. You are encouraged [to define your own training pipeline](https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/customtraining_example/).
+> ⚠️ The default `train` function with the `InferICs` setup is opiniated and meant for demonstration purposes. You are encouraged [to define your own training pipeline](https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/customtraining_example/).
 
 ```julia
 using Lux, Optimisers, ComponentArrays # conditional loading to use `SGDBackend`
