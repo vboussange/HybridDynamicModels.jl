@@ -75,7 +75,6 @@ model = ARModel(
     ar_step;
     dt = 0.1)
 
-# Setup and train
 ps, st = Lux.setup(Random.default_rng(), model)
 tsteps = range(0, stop = 10.0, step = 0.1)
 
@@ -122,7 +121,6 @@ dataloader = SegmentedTimeSeries((data, tsteps); segment_length = 10, shift = 2)
 backend = SGDBackend(Adam(1e-2), 100, AutoZygote(), MSELoss())
 result = train(backend, model, dataloader, InferICs(false))
 
-# Make predictions
 tspan = (tsteps[1], tsteps[end])
 prediction, _ = model(
     (; u0 = result.ics[1].u0,
@@ -135,7 +133,6 @@ prediction, _ = model(
 ```julia
 using Distributions, Turing, ComponentArrays # conditional loading to use `MCSamplingBackend`
 
-# Add priors to rate parameters
 rate_priors = (
     growth = arraydist([Normal(0.1, 0.05)]),
     decay = arraydist([Normal(0.05, 0.02)])
@@ -150,7 +147,6 @@ bayesian_model = ARModel(
     dt = 0.1
 )
 
-# MCMC training
 datadistrib = Normal
 mcmc_backend = MCSamplingBackend(NUTS(0.65), 500, datadistrib)
 result = train(mcmc_backend,
