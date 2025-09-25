@@ -32,7 +32,6 @@ model = ARModel(
     ar_step;
     dt = 0.1)
 
-# Setup and train
 ps, st = Lux.setup(Random.default_rng(), model)
 tsteps = range(0, stop = 10.0, step = 0.1)
 
@@ -59,14 +58,12 @@ dataloader = SegmentedTimeSeries((data, tsteps); segment_length = 10, shift = 2)
 backend = SGDBackend(Adam(1e-2), 100, AutoZygote(), MSELoss())
 result = train(backend, model, dataloader, InferICs(false))
 
-# Make predictions
 tspan = (tsteps[1], tsteps[end])
 prediction, _ = model(
     (; u0 = result.ics[1].u0,
         tspan = tspan,
         saveat = tsteps), result.ps, result.st)</code></pre><h3 id="Bayesian-inference-with-Turing.jl-through-the-MCSamplingBackend"><a class="docs-heading-anchor" href="#Bayesian-inference-with-Turing.jl-through-the-MCSamplingBackend">Bayesian inference with <code>Turing.jl</code> through the <code>MCSamplingBackend</code></a><a id="Bayesian-inference-with-Turing.jl-through-the-MCSamplingBackend-1"></a><a class="docs-heading-anchor-permalink" href="#Bayesian-inference-with-Turing.jl-through-the-MCSamplingBackend" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Distributions, Turing, ComponentArrays # conditional loading to use `MCSamplingBackend`
 
-# Add priors to rate parameters
 rate_priors = (
     growth = arraydist([Normal(0.1, 0.05)]),
     decay = arraydist([Normal(0.05, 0.02)])
@@ -81,7 +78,6 @@ bayesian_model = ARModel(
     dt = 0.1
 )
 
-# MCMC training
 datadistrib = Normal
 mcmc_backend = MCSamplingBackend(NUTS(0.65), 500, datadistrib)
 result = train(mcmc_backend,
@@ -91,4 +87,4 @@ result = train(mcmc_backend,
 
 # Sample from posterior
 chains = result.chains
-posterior_samples = sample(bayesian_model, chains, 50)</code></pre><h2 id="Documentation"><a class="docs-heading-anchor" href="#Documentation">📚 Documentation</a><a id="Documentation-1"></a><a class="docs-heading-anchor-permalink" href="#Documentation" title="Permalink"></a></h2><p>Check out <a href="https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/data_loading/">the tutorials</a> and the <a href="https://vboussange.github.io/HybridDynamicModels.jl/stable/api/">API</a> in <a href="https://vboussange.github.io/HybridDynamicModels.jl/dev/">the documentation</a>.</p><h2 id="Acknowledgments"><a class="docs-heading-anchor" href="#Acknowledgments">🙏 Acknowledgments</a><a id="Acknowledgments-1"></a><a class="docs-heading-anchor-permalink" href="#Acknowledgments" title="Permalink"></a></h2><p>Built on the excellent LuxDL, SciML and TuringLang ecosystems:</p><ul><li><a href="https://github.com/LuxDL/Lux.jl">Lux.jl</a> for neural networks</li><li><a href="https://github.com/TuringLang/Turing.jl">Turing.jl</a> for Bayesian inference</li><li><a href="https://github.com/SciML/SciMLSensitivity.jl">SciMLSensitivity.jl</a> for automatic differentiation</li><li><a href="https://github.com/SciML/OrdinaryDiffEq.jl">OrdinaryDiffEq.jl</a> for differential equations</li></ul></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="examples/data_loading/">Data Loading with <code>SegmentedTimeSeries</code> »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Tuesday 23 September 2025 07:24">Tuesday 23 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+posterior_samples = sample(bayesian_model, chains, 50)</code></pre><h2 id="Documentation"><a class="docs-heading-anchor" href="#Documentation">📚 Documentation</a><a id="Documentation-1"></a><a class="docs-heading-anchor-permalink" href="#Documentation" title="Permalink"></a></h2><p>Check out <a href="https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/data_loading/">the tutorials</a> and the <a href="https://vboussange.github.io/HybridDynamicModels.jl/stable/api/">API</a> in <a href="https://vboussange.github.io/HybridDynamicModels.jl/dev/">the documentation</a>.</p><h2 id="Acknowledgments"><a class="docs-heading-anchor" href="#Acknowledgments">🙏 Acknowledgments</a><a id="Acknowledgments-1"></a><a class="docs-heading-anchor-permalink" href="#Acknowledgments" title="Permalink"></a></h2><p>Built on the excellent LuxDL, SciML and TuringLang ecosystems:</p><ul><li><a href="https://github.com/LuxDL/Lux.jl">Lux.jl</a> for neural networks</li><li><a href="https://github.com/TuringLang/Turing.jl">Turing.jl</a> for Bayesian inference</li><li><a href="https://github.com/SciML/SciMLSensitivity.jl">SciMLSensitivity.jl</a> for automatic differentiation</li><li><a href="https://github.com/SciML/OrdinaryDiffEq.jl">OrdinaryDiffEq.jl</a> for differential equations</li></ul></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="examples/data_loading/">Data Loading with <code>SegmentedTimeSeries</code> »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Thursday 25 September 2025 15:31">Thursday 25 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
