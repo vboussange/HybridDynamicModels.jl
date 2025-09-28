@@ -15,14 +15,14 @@
 ## 🚀 Key Features
 
 ### **Dynamic model layers**
-- **`ICLayer`**: For initial condition inference
-- **`ODEModel`**: Neural ODEs
-- **`ARModel`**: Autoregressive models
-- **`AnalyticModel`**: For explicit dynamical models
+- **`ICLayer`**: For specifying initial conditions (ICs).
+- **`ODEModel`**: For specifying (hybrid) ODEs
+- **`ARModel`**: For specifying (hybrid) autoregressive models
+- **`AnalyticModel`**: For specifying (hybrid) explicit dynamical models
 
 ### **Utility layers for hybrid modeling**
 - **`ParameterLayer`**: Learnable parameters, composable with optional `Constraint` layers
-- **`BayesianLayer`**: Add probabilistic priors to any Lux layer
+- **`BayesianLayer`**: Add probabilistic priors to any `Lux` layer
 
 ### **Data loaders**
 - **`SegmentedTimeSeries`**: Time series data loader with segmentation, implementing mini-batching.
@@ -77,21 +77,37 @@ model = ARModel(
 
 ps, st = Lux.setup(Random.default_rng(), model)
 tsteps = range(0, stop = 10.0, step = 0.1)
+tspan = (tsteps[1], tsteps[end])
 
 preds, _ = model(
     (; u0 = [1.0, 1.0],
-        tspan = (tsteps[1], tsteps[end]),
+        tspan,
         saveat = tsteps), ps, st)
 size(preds)  # (2, 101)
 ```
 We can predict batches of time series by providing a batch of initial conditions.
 ```julia
 x = [(; u0 = rand(2),
-         tspan = (tsteps[1], tsteps[end]),
-         saveat = tsteps) for _ in 1:5]
+    tspan = (tsteps[1], tsteps[end]),
+    saveat = tsteps) for _ in 1:5]
 batch_preds, _ = model(x, ps, st)
 size(batch_preds)  # (2, 101, 5)
 ```
+
+We may want to specify `tspan`, `saveat` or `u0` once for all. This can be done when initiating the model. All hyperparameters are stored in the model's states.
+```julia
+# Create autoregressive model
+model = ARModel(
+    (interaction = interaction_layer, rates = rate_params),
+    ar_step;
+    dt = 0.1,
+    tspan, 
+    saveat = tsteps)
+ps, st = Lux.setup(Random.default_rng(), model)
+st.kwargs # (dt = 0.1, tspan = (0.0, 10.0), saveat = 0.0:0.1:10.0)
+preds, _ = model((; u0 = [1.0, 1.0]), ps, st)
+```
+Specifying hyperparameters during model call will override the model's states.
 
 We can bind our `model` with an additional layer predicting initial conditions from some other input data using the `ICLayer`.
 
