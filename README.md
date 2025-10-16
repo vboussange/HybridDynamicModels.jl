@@ -178,6 +178,12 @@ posterior_samples = sample(bayesian_model, chains, 50)
 ## 📚 Documentation
 Check out [the tutorials](https://vboussange.github.io/HybridDynamicModels.jl/stable/examples/data_loading/) and the [API](https://vboussange.github.io/HybridDynamicModels.jl/stable/api/) in [the documentation](https://vboussange.github.io/HybridDynamicModels.jl/dev/).
 
+## 📝 Citation
+If you use this code, please cite
+
+> Boussange, V., Vilimelis-Aceituno, P., Schäfer, F., Pellissier, L., *A calibration framework to improve mechanistic forecasts with hybrid dynamic models*. Accepted in Methods in Ecology and Evolution. [bioRxiv](https://www.biorxiv.org/content/10.1101/2022.07.25.501365v4)  (2024)
+
+
 ## 🙏 Acknowledgments
 
 Built on the excellent LuxDL, SciML and TuringLang ecosystems:
